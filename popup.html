@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Chụp quảng cáo Meta</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <div class="brand"><img class="logo" src="assets/logo.png" alt="Meta Ads Capture"><div><h1>Chụp quảng cáo</h1><p>Ảnh và link theo đúng tên Ad</p><small class="made-by">made by Huy</small></div></div>
+    <span id="badge" class="badge">Sẵn sàng</span>
+  </header>
+  <main>
+    <section class="notice"><span>1</span><p id="platformNotice">Mở Ads Manager ở màn hình <strong>Edit</strong> và giữ cây Campaign / Ad set / Ad ở bên trái.</p></section>
+    <label class="format-label">Chế độ chụp<select id="captureMode"><option value="auto">Tự động theo danh sách quảng cáo</option><option value="regular">Chụp thường — cả trang, một link</option></select></label>
+    <label id="platformChoice" class="format-label">Nền tảng<select id="platform"><option value="meta">Meta Ads</option><option value="google">Google Ads — chụp từng màn</option></select></label>
+    <section id="googlePanel" class="card hidden">
+      <h2>Chụp Google Ads</h2>
+      <p class="output-note">Mở màn thiết lập cần chụp. Tool cuộn và ghép thành một ảnh dài. Google có nhiều màn riêng: dán link từng màn bên dưới để chụp lần lượt, hoặc để trống để chụp màn hiện tại. Mở sẵn các mục thu gọn bạn cần trong ảnh.</p>
+      <label class="format-label">Cấp của màn hiện tại<select id="googleLevel"><option value="campaign">Campaign</option><option value="adset">Ad group</option><option value="ad">Ad</option></select></label>
+      <label class="format-label">Tên và link các màn (mỗi dòng một màn)</label>
+      <textarea id="googlePages" placeholder="Campaign A | https://ads.google.com/...&#10;Ad group B | https://ads.google.com/..."></textarea>
+      <small>Copy link trực tiếp từ thanh địa chỉ Google Ads. Chế độ này chụp ảnh, chưa tự lấy link preview hoặc tự mở toàn bộ mục thiết lập.</small>
+    </section>
+    <section class="card">
+      <div class="section-title"><span>2</span><div><h2>Ảnh sẽ được lưu ở đâu?</h2><p>Bạn có thể đổi lựa chọn bất cứ lúc nào.</p></div></div>
+      <div class="choice-grid">
+        <label class="choice selected" id="localChoice"><input type="radio" name="destination" value="local" checked><span class="choice-icon">↓</span><strong>Tải về máy</strong><small>Dùng ngay, không cần kết nối</small></label>
+        <label class="choice" id="driveChoice"><input type="radio" name="destination" value="drive"><span class="choice-icon drive">△</span><strong>Drive đơn giản</strong><small>Không cần OAuth Client ID</small></label>
+      </div>
+      <div id="drivePanel" class="subpanel hidden">
+        <label>URL Apps Script Web App<input id="webhookUrl" placeholder="https://script.google.com/macros/s/.../exec"></label>
+        <small>Không cần Google Cloud hay OAuth. Dán URL nhận được sau khi Deploy Apps Script.</small>
+        <label>Mã bảo vệ upload<input id="webhookToken" type="password" placeholder="Giống UPLOAD_TOKEN trong Code.gs"></label>
+        <div class="connection"><span id="driveDot" class="dot"></span><span id="driveStatus">Webhook chưa được kiểm tra</span><button id="connect" class="text-button">Kiểm tra</button></div>
+        <label class="check"><input type="checkbox" id="makePublic"><span>Đồng thời chia sẻ file gốc trên Drive <small>(không cần thiết với link xem ảnh bảo mật)</small></span></label>
+        <div class="folder"><label>Link thư mục Google Drive<input id="folderId" placeholder="Dán link https://drive.google.com/drive/folders/..."></label><small>Dán nguyên link folder; để trống sẽ lưu vào My Drive.</small></div>
+        <p class="webhook-help">Chưa có URL? Mở file <strong>apps-script/Code.gs</strong> trong project và làm theo README.</p>
+      </div>
+    </section>
+    <section id="metaPanel" class="card compact">
+      <div class="section-title"><span>3</span><div><h2>Danh sách cần chụp</h2><p>Tool chỉ chạy một tab Meta để bảo đảm ổn định.</p></div></div>
+      <small id="sessionHint" class="session-hint">Khi bấm bắt đầu, tool sẽ xử lý tab Ads Manager đang mở trước mặt bạn.</small>
+      <label class="format-label level-label"><span>Campaign</span><span class="level-check"><input type="checkbox" id="includeCampaign" checked> Chụp</span></label>
+      <textarea id="targetCampaigns" class="ad-list" placeholder="[FACEBOOK] DOMINOS - REACH..."></textarea>
+      <label class="format-label level-label"><span>Ad Set</span><span class="level-check"><input type="checkbox" id="includeAdset" checked> Chụp</span></label>
+      <textarea id="targetAdsets" class="ad-list" placeholder="Q3-26_Post 5236..."></textarea>
+      <label class="format-label level-label"><span>Ads</span><span class="level-actions"><span class="level-check"><input type="checkbox" id="captureAdImage" checked> Chụp ảnh</span><span class="level-check preview-only-check"><input type="checkbox" id="captureAdPreview" checked> Lấy Preview</span></span></label>
+      <textarea id="targetAds" class="ad-list" placeholder="Post 5236_DP_FBR_BRANDING..."></textarea>
+      <div class="import-row"><label class="import-button">Nhập file Excel/CSV<input id="importFile" type="file" accept=".xlsx,.csv,.txt,.tsv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,text/plain"></label><small id="importStatus">App tự đọc file export Meta, không cần chỉnh lại.</small></div>
+      <div id="structureManager" class="structure-manager hidden">
+        <div class="structure-head"><div><strong>Cấu trúc kết quả Copy</strong><small>Kéo thả để đổi thứ tự hoặc chuyển Ad set/Ad sang nhóm khác.</small></div><button id="clearTree" type="button" class="mini-button">Xóa cây</button></div>
+        <div id="structureTree" class="structure-tree"></div>
+        <div class="structure-actions"><button id="resetTree" type="button" class="mini-button">Khôi phục theo file</button><span id="treeSummary"></span></div>
+      </div>
+      <p class="output-note">Kết quả được giữ trong khung Copy; tool không tự tải file TXT.</p>
+      <label class="check preview-link-option advantage-option"><input type="checkbox" id="highlightAdvantage"><span><strong>Lưu ý Advantage+</strong><small>Thêm khung đỏ quanh mục Advantage+ creative trong ảnh Ad sau khi ghép.</small></span></label>
+      <label class="check preview-link-option advantage-option"><input type="checkbox" id="highlightTA"><span><strong>Khoanh TA / Đối tượng</strong><small>Khoanh riêng phần Audience / Targeting trong ảnh Ad set.</small></span></label>
+      <label class="check preview-link-option advantage-option"><input type="checkbox" id="highlightBudget"><span><strong>Khoanh ngân sách</strong><small>Khoanh phần Budget trong ảnh Campaign hoặc Ad set; không đổi cài đặt quảng cáo.</small></span></label>
+    </section>
+    <label class="background-mode"><input type="checkbox" id="backgroundMode" checked><span><strong>Chạy nền</strong><small>Giữ kích thước trang ổn định khi bạn chuyển tab. Giữ Chrome mở trong lúc chụp.</small></span></label>
+    <label class="background-mode panel-visibility-option"><input type="checkbox" id="autoHidePanel" checked><span><strong>Ẩn giao diện khi bắt đầu</strong><small>Vẫn có cửa sổ tiến độ nhỏ để theo dõi; kéo và thu/phóng tùy ý. Bỏ tick để giữ cả Side Panel.</small></span></label>
+    <button id="capture" class="capture-button"><span class="camera">▣</span><span><strong>Bắt đầu xử lý</strong><small>Phím nhanh: Ctrl + Shift + F</small></span></button>
+    <button id="stop" class="stop-button hidden">Dừng tool</button>
+    <button id="resume" type="button" class="stop-button hidden">Tiếp tục từ mục chưa xong</button>
+    <section id="status" class="multi-status hidden">
+      <article class="session-progress" data-status-session="session1"><div class="status-line"><span class="session-status-text">Đang chuẩn bị…</span><strong class="session-percent">0%</strong></div><progress max="100" value="0"></progress><button type="button" class="session-stop mini-button" data-stop-session="session1">Dừng</button></article>
+      <p>Không đóng hoặc reload tab Ads Manager đang được tool thao tác.</p>
+    </section>
+    <section id="resultPanel" class="multi-results hidden">
+      <article class="result-panel session-result inactive" data-result-session="session1"><div class="result-head"><div><strong>Kết quả</strong><p class="session-result-summary"></p></div><div class="result-actions"><label class="compact-link-toggle"><input type="checkbox" id="compactLinks"><span>Link gọn</span></label><button type="button" class="copy-button" data-copy-session="session1">Copy</button></div></div><textarea class="session-result-text" readonly></textarea><div class="session-result-rich hidden"></div><small class="compact-link-help">Bật “Link gọn”, sau đó Copy và dán vào Word/Google Docs để chữ Link giữ hyperlink.</small></article>
+    </section>
+    <details class="advanced"><summary>Cài đặt nâng cao</summary><div class="advanced-grid">
+      <label>Tên file<input id="filenamePrefix" value="MetaAds"></label>
+      <label>Tốc độ chụp<select id="capturePace"><option value="fast">Nhanh</option><option value="steady">Chờ kỹ hơn</option></select><small>Cuộn mượt; chỉ chụp khi nội dung đã ổn định. Chọn chờ kỹ hơn nếu mạng chậm.</small></label>
+      <p class="output-note">Giữ nguyên zoom và mật độ điểm ảnh của tab, không tự phóng to khi chụp.</p>
+      <label>Chờ tối thiểu khi chọn “Chờ kỹ hơn”<input id="settleMs" type="number" min="1000" max="5000" step="100" value="1800"><small>Meta: chế độ Nhanh chờ tối thiểu 0,6 giây, và tự chờ thêm nếu nội dung còn thay đổi.</small></label>
+      <label>Chờ Meta tải tối đa<input id="maxLoadWaitMs" type="number" min="10000" max="60000" step="1000" value="30000"><small>Khuyến nghị 30.000 ms để tab nền tải đủ nội dung.</small></label>
+      <label>Độ chồng giữa các đoạn<input id="overlapRatio" type="number" min="0.1" max="0.5" step="0.05" value="0.25"><small>0,25 nghĩa là hai ảnh chồng nhau 25%, tránh mất nội dung.</small></label>
+      <label>Số đoạn tối đa cho mỗi Ad<input id="maxShots" type="number" min="1" max="500" value="100"></label>
+      <label>Vùng mỗi hàng Ad<input id="rowSelector" placeholder="Tự nhận diện"></label>
+      <label>Vị trí tên Ad<input id="nameSelector" placeholder="Tự nhận diện"></label>
+      <label>Vùng có thanh cuộn<input id="scrollSelector" placeholder="Tự nhận diện"></label>
+      <label>Khung Ad preview<input id="previewSelector" placeholder="Tự nhận diện"></label>
+      <label>Ô tên Ad hiện tại<input id="currentNameSelector" placeholder="Tự nhận diện"></label>
+      <label>Mẫu tên Ad<input id="adPattern" value="post\\s*\\d+"><small>Biểu thức tìm Ad trong danh sách bên trái.</small></label>
+      <label class="check"><input type="checkbox" id="hideChrome"><span>Ẩn menu Meta khi chụp</span></label>
+      <label class="check"><input type="checkbox" id="exportJson"><span>Xuất thêm file JSON kỹ thuật</span></label>
+    </div></details>
+  </main>
+  <script src="xlsx-parser.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

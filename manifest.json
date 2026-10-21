@@ -1,0 +1,69 @@
+{
+  "manifest_version": 3,
+  "name": "Meta Ads Capture & Link Mapper",
+  "version": "6.5.0",
+  "description": "Capture Meta Ads and Google Ads settings as long screenshots, upload to Drive and copy screenshot links.",
+  "minimum_chrome_version": "141",
+  "permissions": [
+    "activeTab",
+    "debugger",
+    "downloads",
+    "offscreen",
+    "notifications",
+    "sidePanel",
+    "scripting",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://www.facebook.com/*",
+    "https://business.facebook.com/*",
+    "https://adsmanager.facebook.com/*",
+    "https://script.google.com/*",
+    "https://script.googleusercontent.com/*",
+    "https://ads.google.com/*"
+  ],
+  "optional_host_permissions": ["http://*/*", "https://*/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "commands": {
+    "quick-capture": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+F"
+      },
+      "description": "Chạy nhanh Meta Ads Capture trên tab hiện tại"
+    }
+  },
+  "icons": {
+    "16": "assets/icon-16.png",
+    "32": "assets/icon-32.png",
+    "48": "assets/icon-48.png",
+    "128": "assets/icon-128.png"
+  },
+  "action": {
+    "default_title": "Mở Meta Ads Capture",
+    "default_icon": {
+      "16": "assets/icon-16.png",
+      "32": "assets/icon-32.png"
+    }
+  },
+  "side_panel": {
+    "default_path": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://ads.google.com/*"],
+      "js": ["capture-scroll.js", "google-content.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://www.facebook.com/*",
+        "https://business.facebook.com/*",
+        "https://adsmanager.facebook.com/*"
+      ],
+      "js": ["capture-scroll.js", "content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

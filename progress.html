@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Tiến độ chụp · Meta Ads Capture</title>
+  <link rel="stylesheet" href="progress.css">
+</head>
+<body>
+  <main>
+    <header><h1>Tiến độ chụp</h1><button id="sizeToggle" type="button" aria-expanded="true" aria-controls="help">Thu gọn</button></header>
+    <div class="status-head"><span id="stateLabel">Đang kết nối…</span><strong id="percent">0%</strong></div>
+    <p id="message" role="status" aria-live="polite">Đang đọc trạng thái chụp…</p>
+    <progress id="progress" max="100" value="0" aria-label="Tiến độ xử lý"></progress>
+    <p id="warning" role="alert" hidden>Đang thử lại. Hãy chuyển về tab đang chụp và giữ tab ở phía trước để trang tải tiếp.</p>
+    <div class="actions"><button id="backToTab" type="button" disabled>Về tab đang chụp</button><button id="stopCapture" type="button" disabled>Dừng</button></div>
+    <p id="actionError" role="alert" hidden></p>
+    <p id="help">Kéo thanh tiêu đề để di chuyển; kéo mép cửa sổ để đổi kích thước. Đóng khung không dừng chụp. Khi xong, mở app để Copy kết quả.</p>
+  </main>
+  <script src="progress.js"></script>
+</body>
+</html>
