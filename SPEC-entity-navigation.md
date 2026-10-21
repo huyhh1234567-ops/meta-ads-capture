@@ -29,6 +29,7 @@ if (state.stopRequested) throw new Error('__MAC_STOPPED__');
 
 - Trừ mục đang mở đã xác minh cả tên, ID và cha, mỗi lần chọn thay tên trong ô Search của cây bên trái và nhấn Enter trước khi đọc kết quả. Không dùng ô Search ngoài cây hoặc ô thiết lập quảng cáo.
 - Không có ô Search duy nhất: báo lỗi, không quay lại quét toàn bộ cây.
+- Chờ giao diện cập nhật tên Search trước khi Enter; giữ bảo vệ ô thiết lập trong khoảng chờ. Không dùng hàng cha còn lại để kết luận Ad đã tải xong. Khi cấp cần tìm chưa có hàng hoặc cây trống không hiện loading, tiếp tục chờ trong toàn bộ giới hạn tải đã cấu hình.
 - Không có vùng cuộn: đọc các kết quả đã lọc, kể cả kết quả rỗng ổn định; không ném lỗi chỉ vì thiếu scrollbar.
 - Có vùng cuộn: đưa danh sách kết quả đã lọc về đầu và quét đến cuối nếu cần; không quét cây chưa lọc. Chờ hàng virtualized tải ổn định.
 - Nếu không có scrollbar nhưng danh sách còn đang tải, chờ theo giới hạn cấu hình; không coi danh sách chưa tải là đã tìm hết.

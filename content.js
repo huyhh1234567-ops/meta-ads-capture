@@ -576,6 +576,19 @@
       Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, target);
       input.dispatchEvent(new Event('input', { bubbles: true }));
       input.dispatchEvent(new Event('change', { bubbles: true }));
+    } finally { state.allowedSearch = null; }
+    // Meta reflects React's committed query in the value attribute. The DOM
+    // property alone changes before React is ready to handle Enter.
+    const updateBy = Date.now() + Math.max(3000, Number(state.settings.maxLoadWaitMs) || 30000);
+    do {
+      await sleep(100);
+      if (state.stopRequested) throw new Error('__MAC_STOPPED__');
+      if (findEntitySearchInput() !== input || input.value !== target) throw new Error('Ô Search đã thay đổi trước khi áp dụng tìm kiếm.');
+      if (!input.hasAttribute('value') || input.getAttribute('value') === target) break;
+      if (Date.now() >= updateBy) throw new Error('Meta chưa cập nhật tên Search mới. Tool chưa gửi Enter để tránh tìm theo tên cũ.');
+    } while (true);
+    state.allowedSearch = input;
+    try {
       for (const type of ['keydown', 'keyup']) {
         input.dispatchEvent(new KeyboardEvent(type, { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, cancelable: true }));
       }
@@ -584,10 +597,11 @@
     return resetEntityListToTop(level, target);
   }
 
-  async function settleEntityListAt(top, searchQuery = null) {
-    let scroller = null, stable = 0, previous = '';
+  async function settleEntityListAt(top, searchQuery = null, searchLevel = null) {
+    let scroller = null, stable = 0, previous = '', emptyResult = false;
     const deadline = Date.now() + Math.max(3000, Number(state.settings.maxLoadWaitMs) || 30000);
     while (Date.now() < deadline) {
+      emptyResult = false;
       if (state.stopRequested) throw new Error('__MAC_STOPPED__');
       const detected = findLeftScroller([]);
       if (detected !== scroller) { stable = 0; previous = ''; scroller = detected; }
@@ -617,14 +631,20 @@
       const signatureWithPosition = `${Math.round(scroller?.scrollTop || 0)}:${scroller?.scrollHeight || 0}:${signature}`;
       const ready = rows.length || searchQuery !== null || (!scroller && detectCurrentLevel());
       stable = (!scroller || Math.abs(scroller.scrollTop - desired) <= 1) && ready && !loading && signatureWithPosition === previous ? stable + 1 : 0;
+      const hasResults = searchLevel
+        ? rows.some((row) => LEVEL_CONFIG[searchLevel].rowLabel.test(row.getAttribute('aria-label') || row.getAttribute('data-level') || ''))
+        : rows.length;
+      emptyResult = searchQuery !== null && !hasResults && !loading && stable >= 2;
       previous = signatureWithPosition;
-      if (stable >= 2) return scroller;
+      if (stable >= 2 && (hasResults || searchQuery === null)) return scroller;
     }
+    // A retained parent row does not mean the requested Ad results have loaded.
+    if (emptyResult) return scroller;
     throw new Error('Danh sách bên trái chưa cuộn hoặc tải ổn định. Tool chưa quét hết; hãy thử lại khi Meta tải xong.');
   }
 
   async function resetEntityListToTop(level, searchQuery = null) {
-    try { return await settleEntityListAt(0, searchQuery); }
+    try { return await settleEntityListAt(0, searchQuery, searchQuery === null ? null : level); }
     catch (error) {
       if (error.message === '__MAC_STOPPED__') throw error;
       throw new Error('Danh sách Campaign/Ad set/Ad bên trái chưa tải ổn định hoặc ô Search đã thay đổi. Tool không tìm từ vị trí cuộn hiện tại; hãy mở cây danh sách rồi thử lại.');
@@ -1186,12 +1206,12 @@
         if (!found.has(key)) found.set(key, { key, top: grid?.scrollTop || 0 });
       }
       if (found.size > 1) throw new Error(`Có nhiều ${LEVEL_CONFIG[level]?.output} cùng tên trong nhóm hiện tại. Hãy import ID để phân biệt; tool dừng để tránh chụp nhầm.`);
-      if (!grid || !items.length) {
+      if (!grid) { reachedBottom = true; break; }
+      if (!items.length) {
         // Ads-only viewports are normal while looking for a Campaign/Ad set.
         // Wait on ALL hierarchy rows; never treat a temporary empty level as EOF.
         const settled = await settleEntityListAt(grid?.scrollTop || 0, target);
-        if (!grid && !settled) { reachedBottom = true; break; }
-        if (!grid || settled !== grid) continue;
+        if (settled !== grid) continue;
       }
       if (grid.scrollTop + grid.clientHeight >= grid.scrollHeight - 2) {
         await settleEntityListAt(grid.scrollTop, target);
@@ -1280,7 +1300,7 @@
         state.selectedPath = {};
         state.selectedIds = {};
         if (!findEntitySearchInput()) throw new Error('Hãy mở ô Search trong cây Campaign/Ad set/Ad bên trái trước khi bắt đầu.');
-        respond({ ok: true, version: '6.6.0' });
+        respond({ ok: true, version: '6.6.1' });
       } else if (message.type === 'MAC_DETECT_LEVEL') {
         respond({ ok: true, level: detectCurrentLevel() });
       } else if (message.type === 'MAC_SELECT_TARGET_ENTITY') {

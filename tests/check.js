@@ -158,7 +158,7 @@ async function check() {
   left.scrollTop = 1800;
   const initialized = await new Promise((resolve) => metaMessage({ type: 'MAC_CAPTURE_INIT', settings: {} }, {}, resolve));
   assert.equal(initialized.ok, true);
-  assert.equal(initialized.version, '6.6.0');
+  assert.equal(initialized.version, '6.6.1');
   assert.equal(left.scrollTop, 1800, 'Start must not scan or reset the unfiltered tree');
 
   const normalQuery = context.document.querySelectorAll, normalRows = left.querySelectorAll;
@@ -670,7 +670,7 @@ async function check() {
     setStatus: async (status) => statuses.push(status),
     send: async (_id, message) => {
       sent.push(message.type);
-      if (message.type === 'MAC_CAPTURE_INIT') return { ok: true, version: '6.6.0' };
+      if (message.type === 'MAC_CAPTURE_INIT') return { ok: true, version: '6.6.1' };
       return { ok: true, snapshot: { ...snap, name: 'Current page' } };
     },
     shouldStop: async () => false, keepBackgroundTabActive: async () => {},

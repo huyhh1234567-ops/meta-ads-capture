@@ -1,4 +1,14 @@
-# Meta Ads Capture & Link Mapper 6.6.0
+# Meta Ads Capture & Link Mapper 6.6.1
+
+## Bản 6.6.1 — chờ tên Search và Ad con tải xong, 21/10/2026
+
+- Tách nhập tên và Enter thành hai lượt xử lý. React có thời gian cập nhật tên mới, tránh áp dụng lại bộ lọc của Campaign/Ad set trước đó. Quyền nhập chỉ mở cho đúng ô Search trong từng thao tác; không mở trong lúc chờ.
+- Khi tìm Ad, một hàng Ad set đang hiện chưa được coi là kết quả đã tải xong. Chờ đúng cấp cần tìm trong giới hạn thời gian cấu hình, kể cả khi Meta giữ hàng cha hoặc tạm xóa cây mà không hiện loading. Chỉ kết luận thiếu kết quả sau khi đã chờ hết giới hạn nếu cấp đó vẫn chưa xuất hiện.
+- Giữ xác minh tên đầy đủ, ID, nhóm cha, giới hạn ba lần thử và checkpoint cũ. Không cần sửa tên import hoặc Deploy lại Apps Script.
+
+Cập nhật: Reload extension → F5 tab Meta → **Tiếp tục từ mục chưa xong**.
+
+Kiểm chứng: `node tests/browser-name-search.js` tái hiện lỗi React cập nhật truy vấn trễ và ca `New Launch 264 - drop 2_Female` chỉ có hàng Ad set trước khi Ad tải sau 2,6 giây. Hai ca đều thất bại trước sửa và đạt sau sửa. Đã đọc cây Meta thực tế để xác nhận Ad tồn tại; chưa chạy lại toàn bộ chụp/upload bằng bản mới trên tài khoản thật.
 
 ## Bản 6.6.0 — tìm theo tên trước khi chọn, 21/10/2026
 

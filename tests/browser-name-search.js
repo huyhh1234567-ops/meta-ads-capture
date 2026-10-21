@@ -22,20 +22,24 @@ const source = fs.readFileSync(path.resolve(__dirname, '../content.js'), 'utf8')
     await page.evaluate(() => {
       window.queries = []; window.clicks = []; window.searchInputs = 0;
       window.screenName = ''; window.screenId = ''; window.failLoading = false;
+      window.renderDelay = 650; window.hideLoading = false;
       const search = document.querySelector('nav input');
       const rows = document.getElementById('rows');
       let revision = 0;
+      let inputQuery = '21New Launch 264 - drop 2_Female_FB_21/10_31/10_$32.4';
+      search.setAttribute('value', inputQuery);
       const ads = [
         { name: 'First exact Ad', id: '111111111111111' },
         { name: 'Second exact Ad', id: '222222222222222' },
         { name: 'Duplicate Ad', id: '333333333333333' },
-        { name: 'Duplicate Ad', id: '444444444444444' }
+        { name: 'Duplicate Ad', id: '444444444444444' },
+        { name: 'New Launch 264 - drop 2_Female', id: '555555555555555' }
       ];
       window.renderRows = (items) => {
         rows.replaceChildren();
         for (const item of items) {
           const row = document.createElement('button');
-          row.setAttribute('role', 'rowheader'); row.setAttribute('aria-label', 'Ad');
+          row.setAttribute('role', 'rowheader'); row.setAttribute('aria-label', item.level || 'Ad');
           row.id = `ads_campaign_structure_item_${item.id}`;
           row.textContent = item.name;
           row.onclick = () => { window.clicks.push(item.id); window.screenId = item.id; window.screenName = item.name; };
@@ -43,18 +47,23 @@ const source = fs.readFileSync(path.resolve(__dirname, '../content.js'), 'utf8')
         }
       };
       // Search results change only after Enter and a delayed render.
-      search.addEventListener('input', () => { window.searchInputs++; });
+      search.addEventListener('input', () => {
+        window.searchInputs++;
+        const value = search.value;
+        setTimeout(() => { inputQuery = value; search.setAttribute('value', value); }, 350);
+      });
       search.addEventListener('keydown', (event) => {
         if (event.key !== 'Enter') return;
-        const query = search.value, request = ++revision;
+        const query = inputQuery, request = ++revision;
         window.queries.push(query);
-        rows.setAttribute('aria-busy', 'true');
+        rows.setAttribute('aria-busy', String(!window.hideLoading));
+        if (window.hideLoading) window.renderRows([{ name: '21New Launch 264 - drop 2_Female_FB_21/10_31/10_$32.4', id: '666666666666666', level: 'Ad set' }]);
         if (window.failLoading) return;
         setTimeout(() => {
           if (request !== revision) return;
           window.renderRows(ads.filter((ad) => ad.name.includes(query)));
           rows.setAttribute('aria-busy', 'false');
-        }, 650);
+        }, window.renderDelay);
       });
       window.renderRows([{ name: 'Stale unrelated Ad', id: '999999999999999' }]);
       window.chrome = { runtime: { onMessage: { addListener(fn) { window.listener = fn; } },
@@ -80,7 +89,15 @@ const source = fs.readFileSync(path.resolve(__dirname, '../content.js'), 'utf8')
     assert.deepEqual(result, { names: ['First exact Ad', 'Second exact Ad'],
       queries: ['First exact Ad', 'Second exact Ad'], clicks: ['111111111111111', '222222222222222'],
       searchInputs: 2, setting: 'Original ad setting', query: 'Second exact Ad' });
-    console.log('PASS search each name with Enter, await delayed results, then open the exact ID');
+    console.log('PASS wait for asynchronous input state before Enter; each query opens its exact ID');
+
+    await page.evaluate(async () => {
+      window.hideLoading = true; window.renderDelay = 2600;
+      const selected = await searchTest.selectNamedEntity('New Launch 264 - drop 2_Female', 'ad', {}, 'a:555555555555555');
+      if (selected.snapshot.name !== 'New Launch 264 - drop 2_Female') throw new Error('Wrong reported Ad');
+      window.hideLoading = false; window.renderDelay = 650;
+    });
+    console.log('PASS reported Ad loads after a parent-only result without a loading marker');
 
     const expectFailure = async (name, id, pattern) => {
       const result = await page.evaluate(async ({ name, id }) => {
