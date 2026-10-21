@@ -27,10 +27,13 @@ if (state.stopRequested) throw new Error('__MAC_STOPPED__');
 
 ## Tiêu chí thành công
 
-- Không có vùng cuộn: giữ vị trí hiện tại, đọc các hàng đang có; không ném lỗi chỉ vì thiếu scrollbar.
-- Có vùng cuộn: đưa đúng danh sách bên trái về đầu trước mỗi lượt tìm; quét đến cuối, chờ hàng virtualized tải ổn định.
+- Trừ mục đang mở đã xác minh cả tên, ID và cha, mỗi lần chọn thay tên trong ô Search của cây bên trái và nhấn Enter trước khi đọc kết quả. Không dùng ô Search ngoài cây hoặc ô thiết lập quảng cáo.
+- Không có ô Search duy nhất: báo lỗi, không quay lại quét toàn bộ cây.
+- Không có vùng cuộn: đọc các kết quả đã lọc, kể cả kết quả rỗng ổn định; không ném lỗi chỉ vì thiếu scrollbar.
+- Có vùng cuộn: đưa danh sách kết quả đã lọc về đầu và quét đến cuối nếu cần; không quét cây chưa lọc. Chờ hàng virtualized tải ổn định.
 - Nếu không có scrollbar nhưng danh sách còn đang tải, chờ theo giới hạn cấu hình; không coi danh sách chưa tải là đã tìm hết.
 - Ưu tiên Campaign ID, Ad set ID, Ad ID thật cùng ngữ cảnh cha; không coi mọi `data-id` số là ID quảng cáo.
+- ID DOM `ads_campaign_structure_item_<số>` chỉ có hiệu lực khi hàng điều hướng có nhãn đúng cấp Campaign/Ad set/Ad.
 - ID import `cg:<số>` (Campaign), `as:<số>` hoặc `c:<số>` (Ad set), `ad:<số>` hoặc `a:<số>` (Ad) được chuẩn hóa thành chuỗi số khi so sánh, kể cả ID cha. Không chuyển ID qua Number; không bỏ tiền tố không biết hoặc tiền tố của cấp khác để cố khớp. Giữ nguyên ID/UID nguồn và checkpoint.
 - Vẫn điều hướng đúng cha khi bỏ tick chụp Campaign/Ad set. Tên giống nhau dưới các cha khác nhau không bị trộn.
 - Hai mục cùng tên dưới cùng cha: dùng ID để phân biệt khi có dữ liệu xác minh. Nếu không đủ ID, báo cần ID/ngữ cảnh, không chọn bừa.
@@ -41,6 +44,7 @@ if (state.stopRequested) throw new Error('__MAC_STOPPED__');
 
 Thêm test tái hiện thiếu scrollbar, danh sách ngắn, danh sách đang tải, quét dài và tên trùng ở cả ba cấp.
 Kiểm tra ID đúng/sai/không có và cùng tên khác cha; giữ toàn bộ test read-only hiện có.
+`node tests/browser-name-search.js`: Chrome riêng kiểm tra thay tên liên tiếp, Enter, chờ tải, ID điều hướng, tên trùng, kết quả rỗng, Stop và không nhập vào ô thiết lập.
 Kiểm tra Meta thực tế nếu truy cập được; phân biệt rõ kết quả mô phỏng và kiểm tra thực tế.
 
 ## Giới hạn

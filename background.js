@@ -686,7 +686,7 @@ async function runCapture(tab, suppliedSettings, sessionId = suppliedSettings?.s
     await setStatus({ state: 'running', progress: Math.round(nextIndex / Math.max(1, jobs.length) * 95), message: 'Đang chuẩn bị trang…', result: capturePayload(tab, settings, captured), error: null, targetTabId: tab.id, stopRequested: false, resumeAvailable: false, cleanupPending: true }, sessionId);
     const initialized = await send(tab.id, { type: 'MAC_CAPTURE_INIT', settings });
     if (!initialized?.ok) throw new Error(initialized?.error || 'Tab không phản hồi khi khởi tạo. Hãy F5 tab cần chụp rồi bấm Bắt đầu lại.');
-    if (initialized.version !== '6.5.0') throw new Error('Tab còn dùng mã chụp cũ. Hãy F5 tab một lần sau khi tải lại extension.');
+    if (initialized.version !== '6.6.0') throw new Error('Tab còn dùng mã chụp cũ. Hãy F5 tab một lần sau khi tải lại extension.');
     if (!jobs.length) {
       const detected = await send(tab.id, { type: 'MAC_DETECT_LEVEL' });
       if (!detected?.level) throw new Error('Không xác định được cấp Campaign, Ad set hay Ad hiện tại.');

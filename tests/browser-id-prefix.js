@@ -16,7 +16,7 @@ const source = fs.readFileSync(path.resolve(__dirname, '../content.js'), 'utf8')
     for (const [level, label, prefix] of [['campaign', 'Campaign', 'cg'], ['adset', 'Ad set', 'as'], ['adset', 'Ad set', 'c'], ['ad', 'Ad', 'ad'], ['ad', 'Ad', 'a']]) {
       await page.goto('about:blank');
       await page.setContent(`<style>nav{position:absolute;left:20px;top:100px;width:300px}section{position:absolute;left:500px;top:100px}button{display:block;height:40px;width:300px}</style>
-        <nav role="grid"><button role="rowheader" aria-label="${label}" data-${level}-id="${other}" aria-selected="true">Exact imported name</button>
+        <nav role="grid" id="campaign_structure_tree_root"><input role="combobox" placeholder="Search"><button role="rowheader" aria-label="${label}" data-${level}-id="${other}" aria-selected="true">Exact imported name</button>
         <button role="rowheader" aria-label="${label}" data-${level}-id="${wanted}">Exact imported name</button></nav>
         <section><label>${label} name</label><input value="Exact imported name"></section>`);
       await page.evaluate(() => {

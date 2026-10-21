@@ -151,12 +151,15 @@ async function check() {
   await api.resetEntityListToTop('campaign');
   assert.equal(topWrites, 2, 'Already at top: no scroll writes or synthetic scroll event');
 
-  // Before the initial bulk-capture handshake replies, the sidebar is reset.
+  // Start validates Search; only the filtered lookup resets the tree.
+  const searchInput = { type: 'text', value: '', getAttribute: (key) => key === 'placeholder' ? 'Search' : '', getBoundingClientRect: () => left.getBoundingClientRect() };
+  context.document.getElementById = (id) => id === 'campaign_structure_tree_root'
+    ? { getBoundingClientRect: () => left.getBoundingClientRect(), querySelectorAll: () => [searchInput] } : null;
   left.scrollTop = 1800;
   const initialized = await new Promise((resolve) => metaMessage({ type: 'MAC_CAPTURE_INIT', settings: {} }, {}, resolve));
   assert.equal(initialized.ok, true);
-  assert.equal(initialized.version, '6.5.0');
-  assert.equal(left.scrollTop, 0, 'Start must move the left list to top before any entity search');
+  assert.equal(initialized.version, '6.6.0');
+  assert.equal(left.scrollTop, 1800, 'Start must not scan or reset the unfiltered tree');
 
   const normalQuery = context.document.querySelectorAll, normalRows = left.querySelectorAll;
   context.document.elementsFromPoint = () => [];
@@ -173,7 +176,7 @@ async function check() {
 
   api.state.settings.maxLoadWaitMs = 3000;
   context.document.querySelectorAll = () => [];
-  await assert.rejects(api.resetEntityListToTop('campaign'), /không tìm từ vị trí cuộn hiện tại/, 'Missing sidebar must fail closed, not silently search from the middle');
+  await assert.rejects(api.resetEntityListToTop('campaign'), /chưa tải ổn định/, 'Missing sidebar must fail closed, not silently search from the middle');
   context.document.querySelectorAll = normalQuery;
   left.querySelectorAll = normalRows;
   const normalScrollTo = left.scrollTo;
@@ -294,6 +297,7 @@ async function check() {
     state: { settings: {}, selectedPath: {}, stopRequested: false }, LEVEL_CONFIG: { campaign: { output: 'Campaign' } },
     Date: { now: () => navigationTime }, normalizedEntityId: api.normalizedEntityId, normalizedExact: api.normalizedExact,
     resetEntityListToTop: async () => { leftResets++; },
+    searchEntityList: async () => selectionContext.resetEntityListToTop(),
     settleEntityListAt: async () => selectionGrid,
     currentEntityName: () => selectedCampaign, isLevelScreen: () => !!selectedCampaign,
     currentEntityIds: () => selectedCampaign ? ['111111111111111'] : [],
@@ -666,7 +670,7 @@ async function check() {
     setStatus: async (status) => statuses.push(status),
     send: async (_id, message) => {
       sent.push(message.type);
-      if (message.type === 'MAC_CAPTURE_INIT') return { ok: true, version: '6.5.0' };
+      if (message.type === 'MAC_CAPTURE_INIT') return { ok: true, version: '6.6.0' };
       return { ok: true, snapshot: { ...snap, name: 'Current page' } };
     },
     shouldStop: async () => false, keepBackgroundTabActive: async () => {},

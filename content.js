@@ -2,11 +2,12 @@
   if (window.__metaAdsCaptureInstalled) return;
   window.__metaAdsCaptureInstalled = true;
 
-  const state = { container: null, originalTop: 0, hidden: [], settings: {}, preview: null, visitedAds: new Set(), currentAd: '', currentLevel: 'ad', selectedPath: {}, selectedIds: {}, stopRequested: false, readOnly: false, allowedClick: null };
-  // Capture may navigate, but it must never type into or toggle an ad setting.
+  const state = { container: null, originalTop: 0, hidden: [], settings: {}, preview: null, visitedAds: new Set(), currentAd: '', currentLevel: 'ad', selectedPath: {}, selectedIds: {}, stopRequested: false, readOnly: false, allowedClick: null, allowedSearch: null };
+  // Only the tree's Search input may receive scripted typing, never an ad setting.
   function protectSettings(event) {
     if (!state.readOnly) return;
     const target = event.target;
+    if (target === state.allowedSearch && target === findEntitySearchInput()) return;
     const approved = state.allowedClick && (target === state.allowedClick || state.allowedClick.contains(target));
     if (event.type === 'click' && approved) return;
     const editable = target?.closest?.('input, textarea, select, [contenteditable="true"], [role="textbox"], [role="radio"], [role="checkbox"], [role="switch"], [role="combobox"]');
@@ -551,7 +552,39 @@
     return choose() || null;
   }
 
-  async function settleEntityListAt(top) {
+  function findEntitySearchInput() {
+    const root = document.getElementById('campaign_structure_tree_root');
+    if (!root || !visible(root) || root.getBoundingClientRect().right > innerWidth * .5) return null;
+    const inputs = [...root.querySelectorAll('input')].filter((input) => {
+      const labels = (input.getAttribute('aria-labelledby') || '').split(/\s+/)
+        .map((id) => document.getElementById(id)?.textContent || '').join(' ');
+      return visible(input) && ['text', 'search'].includes(input.type) && !input.disabled && !input.readOnly
+        && [input.getAttribute('aria-label'), input.getAttribute('placeholder'), labels]
+          .some((label) => /^(?:search|tìm kiếm|tìm)$/i.test((label || '').trim()));
+    });
+    return inputs.length === 1 ? inputs[0] : null;
+  }
+
+  async function searchEntityList(target, level) {
+    if (state.stopRequested) throw new Error('__MAC_STOPPED__');
+    const input = findEntitySearchInput();
+    if (!input) throw new Error('Không xác định được ô Search / tìm kiếm duy nhất trong cây bên trái. Hãy mở ô Search rồi thử lại.');
+    state.allowedSearch = input;
+    try {
+      input.focus({ preventScroll: true });
+      // Use the native setter so React sees the replacement query as an input change.
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, target);
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      for (const type of ['keydown', 'keyup']) {
+        input.dispatchEvent(new KeyboardEvent(type, { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, cancelable: true }));
+      }
+    } finally { state.allowedSearch = null; }
+    await sleep(500);
+    return resetEntityListToTop(level, target);
+  }
+
+  async function settleEntityListAt(top, searchQuery = null) {
     let scroller = null, stable = 0, previous = '';
     const deadline = Date.now() + Math.max(3000, Number(state.settings.maxLoadWaitMs) || 30000);
     while (Date.now() < deadline) {
@@ -577,10 +610,12 @@
           return visible(row) && r.right <= innerWidth * .5 && r.bottom > bounds.top && r.top < bounds.bottom;
         });
       const signature = rows.map((row) => `${row.getAttribute('aria-label')}:${row.textContent || ''}:${Math.round(row.getBoundingClientRect().top)}`).join('|');
-      const loading = [...root.querySelectorAll('[aria-busy="true"], [role="progressbar"], [class*="skeleton" i]')]
+      const search = searchQuery === null ? null : findEntitySearchInput();
+      if (searchQuery !== null && (!search || search.value !== searchQuery)) throw new Error('Ô Search đã thay đổi trong lúc tìm. Tool dừng để tránh chọn kết quả cũ.');
+      const loading = search?.getAttribute('aria-busy') === 'true' || [...root.querySelectorAll('[aria-busy="true"], [role="progressbar"], [class*="skeleton" i]')]
         .some((node) => visible(node) && node.getBoundingClientRect().right <= innerWidth * .5);
       const signatureWithPosition = `${Math.round(scroller?.scrollTop || 0)}:${scroller?.scrollHeight || 0}:${signature}`;
-      const ready = rows.length || (!scroller && detectCurrentLevel());
+      const ready = rows.length || searchQuery !== null || (!scroller && detectCurrentLevel());
       stable = (!scroller || Math.abs(scroller.scrollTop - desired) <= 1) && ready && !loading && signatureWithPosition === previous ? stable + 1 : 0;
       previous = signatureWithPosition;
       if (stable >= 2) return scroller;
@@ -588,11 +623,11 @@
     throw new Error('Danh sách bên trái chưa cuộn hoặc tải ổn định. Tool chưa quét hết; hãy thử lại khi Meta tải xong.');
   }
 
-  async function resetEntityListToTop(level) {
-    try { return await settleEntityListAt(0); }
+  async function resetEntityListToTop(level, searchQuery = null) {
+    try { return await settleEntityListAt(0, searchQuery); }
     catch (error) {
       if (error.message === '__MAC_STOPPED__') throw error;
-      throw new Error('Chưa đưa được danh sách Campaign/Ad set/Ad bên trái về đầu và tải đủ các hàng. Tool không tìm từ vị trí cuộn hiện tại; hãy mở cây danh sách rồi thử lại.');
+      throw new Error('Danh sách Campaign/Ad set/Ad bên trái chưa tải ổn định hoặc ô Search đã thay đổi. Tool không tìm từ vị trí cuộn hiện tại; hãy mở cây danh sách rồi thử lại.');
     }
   }
 
@@ -1021,6 +1056,12 @@
     const attributeIds = [item.el, row, ...item.el.querySelectorAll(`[${attribute}]`)]
       .filter(Boolean).map((node) => normalizedEntityId(node.getAttribute(attribute), level))
       .filter(Boolean);
+    // This Meta navigation ID is typed by its row label; generic data-id stays ignored.
+    for (const node of [item.el, row].filter(Boolean)) {
+      if (!LEVEL_CONFIG[level].rowLabel.test(node.getAttribute('aria-label') || '')) continue;
+      const id = (node.getAttribute('id') || '').match(/^ads_campaign_structure_item_(\d{8,})$/)?.[1];
+      if (id) attributeIds.push(id);
+    }
     const links = [item.el, ...item.el.querySelectorAll('a[href]')];
     return [...new Set([...attributeIds, ...links.flatMap((node) => idsFromUrl(node.getAttribute('href') || '', level))])];
   }
@@ -1057,7 +1098,6 @@
     expectedId = checkedId(expectedId, level);
     expectedParentIds = Object.fromEntries(Object.entries(expectedParentIds).map(([key, id]) => [key, checkedId(id, key)]));
     state.currentLevel = level;
-    await resetEntityListToTop(level);
     const requireExact = level === 'ad' || level === 'adset' || level === 'campaign';
     const currentMatches = requireExact
       ? normalizedExact(currentEntityName(level)) === normalizedExact(target)
@@ -1072,6 +1112,7 @@
       rememberSelectedPath(level, currentEntityName(level) || target, expectedId);
       return { done: false, snapshot: await prepareEntity(level) };
     }
+    await searchEntityList(target, level);
     const scanned = new Set();
     const nearby = new Set();
     let rejection = '';
@@ -1148,12 +1189,12 @@
       if (!grid || !items.length) {
         // Ads-only viewports are normal while looking for a Campaign/Ad set.
         // Wait on ALL hierarchy rows; never treat a temporary empty level as EOF.
-        const settled = await settleEntityListAt(grid?.scrollTop || 0);
+        const settled = await settleEntityListAt(grid?.scrollTop || 0, target);
         if (!grid && !settled) { reachedBottom = true; break; }
         if (!grid || settled !== grid) continue;
       }
       if (grid.scrollTop + grid.clientHeight >= grid.scrollHeight - 2) {
-        await settleEntityListAt(grid.scrollTop);
+        await settleEntityListAt(grid.scrollTop, target);
         const current = entityGrid(entityItems(level));
         if (!current || current !== grid || current.scrollTop + current.clientHeight < current.scrollHeight - 2) continue;
         // One final pass over rows rendered after reaching the bottom.
@@ -1162,13 +1203,13 @@
       }
       reachedBottom = false;
       const before = grid.scrollTop;
-      const moved = await settleEntityListAt(before + Math.max(100, Math.floor(grid.clientHeight * .75)));
+      const moved = await settleEntityListAt(before + Math.max(100, Math.floor(grid.clientHeight * .75)), target);
       if (!moved || Math.abs(moved.scrollTop - before) < 2) throw new Error('Danh sách bên trái bị kẹt khi cuộn; tool chưa quét hết, không thể kết luận không tìm thấy tên.');
     }
     if (!reachedBottom) throw new Error('Danh sách quá dài hoặc đang thay đổi; tool chưa quét hết nên không thể kết luận không tìm thấy tên.');
     if (found.size === 1) {
       const candidate = [...found.values()][0];
-      const grid = await settleEntityListAt(candidate.top);
+      const grid = await settleEntityListAt(candidate.top, target);
       const match = entityItems(level).find((item) => exactEntityMatch(item, target)
         && matchesExpectedParents(item, expectedParents, level, expectedParentIds)
         && candidateKey(item, grid) === candidate.key);
@@ -1238,8 +1279,8 @@
         state.readOnly = true;
         state.selectedPath = {};
         state.selectedIds = {};
-        await resetEntityListToTop('campaign');
-        respond({ ok: true, version: '6.5.0' });
+        if (!findEntitySearchInput()) throw new Error('Hãy mở ô Search trong cây Campaign/Ad set/Ad bên trái trước khi bắt đầu.');
+        respond({ ok: true, version: '6.6.0' });
       } else if (message.type === 'MAC_DETECT_LEVEL') {
         respond({ ok: true, level: detectCurrentLevel() });
       } else if (message.type === 'MAC_SELECT_TARGET_ENTITY') {

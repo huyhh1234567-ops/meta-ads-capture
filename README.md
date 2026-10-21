@@ -1,4 +1,14 @@
-# Meta Ads Capture & Link Mapper 6.5.0
+# Meta Ads Capture & Link Mapper 6.6.0
+
+## Bản 6.6.0 — tìm theo tên trước khi chọn, 21/10/2026
+
+- Mỗi lượt chọn Campaign/Ad set/Ad nhập tên đầy đủ vào ô **Search** của cây bên trái rồi nhấn Enter. Chờ kết quả tải ổn định, đối chiếu đúng tên, ID và nhóm cha, sau đó mới chụp/lấy link. Mục tiếp theo thay thế tên tìm kiếm cũ.
+- Chỉ quét các kết quả đã lọc khi chúng còn dài; không quét toàn bộ cây trước khi tìm. Khi không xác định được ô Search duy nhất hoặc kết quả chưa tải xong, tool báo lỗi để thử lại, không nhập vào ô thiết lập quảng cáo khác.
+- Tiếp tục giữ kiểm tra tên trùng, ID import và checkpoint. Nhận thêm ID điều hướng `ads_campaign_structure_item_<ID>` khi hàng có nhãn đúng cấp; `data-id` chung vẫn không được coi là ID quảng cáo.
+
+Cập nhật: Reload extension → F5 tab Meta → mở cây bên trái có ô Search → chạy hoặc tiếp tục danh sách. Không cần Deploy lại Apps Script.
+
+Kiểm chứng: `node tests/browser-name-search.js` chạy Chrome riêng với DOM mô phỏng (dùng `MAC_PLAYWRIGHT_PATH` như các browser test khác): thay tên liên tiếp, Enter, chờ tải, kết quả rỗng, tên trùng, sai ID, Stop và bảo vệ ô thiết lập. Đã kiểm tra trực tiếp ô Search trên Meta cần Enter để lọc; chưa chạy toàn bộ chụp/upload bằng extension mới trên tài khoản thật.
 
 ## Bản 6.5.0 — cửa sổ tiến độ nhỏ, 12/10/2026
 

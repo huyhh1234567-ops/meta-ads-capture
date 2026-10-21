@@ -12,8 +12,11 @@ const test = (name, run) => tests.push({ name, run });
 function fixture() {
   let time = 0, rows = [], loadingUntil = 0;
   const body = {};
+  const search = { type: 'text', value: '', getAttribute: (key) => key === 'placeholder' ? 'Search' : '', getBoundingClientRect: () => rect() };
   const document = {
     body, addEventListener() {}, elementsFromPoint: () => [],
+    getElementById: (id) => id === 'campaign_structure_tree_root'
+      ? { getBoundingClientRect: () => rect(), querySelectorAll: () => [search] } : null,
     querySelectorAll: (selector) => {
       if (selector.includes('aria-busy') || selector.includes('progressbar') || selector.includes('skeleton')) {
         return time < loadingUntil ? [loader] : [];
@@ -48,7 +51,8 @@ function fixture() {
     return node;
   }
   return { api, context, row, setRows: (value) => { rows = value; },
-    loadingFor: (ms) => { loadingUntil = time + ms; }, time: () => time };
+    loadingFor: (ms) => { loadingUntil = time + ms; }, time: () => time,
+    setQuery: (value) => { search.value = value; } };
 }
 
 // Keep real matching/ID/parent helpers; substitute only navigation and capture.
@@ -63,6 +67,7 @@ function selectionFixture(f, { screenId = ids.wanted, actualReset = false } = {}
     entityItems: f.api.entityItems, entityIds: f.api.entityIds,
     matchesExpectedParents: f.api.matchesExpectedParents,
     resetEntityListToTop: actualReset ? f.api.resetEntityListToTop : async () => grid,
+    searchEntityList: async (target) => { f.setQuery(target); return actualReset ? f.api.resetEntityListToTop('ad', target) : context.resetEntityListToTop(); },
     settleEntityListAt: actualReset ? f.api.settleEntityListAt : async () => grid,
     entityGrid: () => actualReset ? null : grid,
     currentEntityName: () => selectedName, currentEntityIds: () => screenId ? [screenId] : [],
