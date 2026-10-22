@@ -15,8 +15,7 @@ function fixture() {
   const search = { type: 'text', value: '', getAttribute: (key) => key === 'placeholder' ? 'Search' : '', getBoundingClientRect: () => rect() };
   const document = {
     body, addEventListener() {}, elementsFromPoint: () => [],
-    getElementById: (id) => id === 'campaign_structure_tree_root'
-      ? { getBoundingClientRect: () => rect(), querySelectorAll: () => [search] } : null,
+    getElementById: (id) => id === 'campaign_structure_tree_root' ? searchRoot : null,
     querySelectorAll: (selector) => {
       if (selector.includes('aria-busy') || selector.includes('progressbar') || selector.includes('skeleton')) {
         return time < loadingUntil ? [loader] : [];
@@ -24,6 +23,9 @@ function fixture() {
       return selector.includes('rowheader') || selector.includes('treeitem') ? rows : [];
     }
   };
+  const searchRoot = { getBoundingClientRect: () => rect(), clientHeight: 40, scrollHeight: 40,
+    contains: (node) => node === searchRoot || node === search || rows.includes(node),
+    querySelectorAll: (selector) => selector === 'input' ? [search] : document.querySelectorAll(selector) };
   const rect = (top = 140) => ({ left: 20, right: 320, top, bottom: top + 40, width: 300, height: 40 });
   const loader = { getBoundingClientRect: () => rect(), getAttribute: () => '' };
   const context = {

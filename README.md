@@ -1,4 +1,14 @@
-# Meta Ads Capture & Link Mapper 6.6.2
+# Meta Ads Capture & Link Mapper 6.6.3
+
+## Bản 6.6.3 — chờ đúng cây kết quả Search, 22/10/2026
+
+- Chỉ nhận vùng cuộn, hàng và loading trong cây `campaign_structure_tree_root` sau Search. Khung cuộn hoặc loading khác bên trái không còn khiến tool báo danh sách chưa ổn định khi kết quả đã sẵn sàng.
+- Giữ nguyên đối chiếu tên đầy đủ và ID riêng trước khi chụp. Tên trùng, sai ID hoặc loading trong chính cây vẫn phải được xử lý an toàn.
+- Lỗi chờ giữ nguyên nguyên nhân Search thay đổi hoặc số hàng/mẫu ổn định/trạng thái loading, thay vì gộp tất cả thành cùng một thông báo.
+
+Cập nhật: Reload extension → F5 Meta → **Tiếp tục từ mục chưa xong**. Checkpoint và Apps Script giữ nguyên.
+
+Kiểm chứng: Chrome riêng tái hiện đúng thông báo lỗi khi có khung cuộn và loading ngoài cây Search; ca này thất bại trước sửa và đạt sau sửa, cả khi có ID và chỉ có tên duy nhất. Kiểm tra thêm loading thật, Search bị thay đổi, sai ID, tên trùng và Stop. Trên Meta thật đã mở được Ad set bằng bấm hàng; chưa chạy chụp/upload bằng bản sửa. Công cụ trình duyệt chặn trang quản lý extension nên cần người dùng Reload bản mới để kiểm chứng tiếp.
 
 ## Bản 6.6.2 — tìm thẳng mục cần xử lý theo tên và ID, 22/10/2026
 

@@ -518,7 +518,7 @@
       .filter((item) => /post\s*\d+/i.test(item.name));
   }
 
-  function findLeftScroller(items) {
+  function findLeftScroller(items, scope = document) {
     const onLeft = (node) => {
       const r = node.getBoundingClientRect();
       return r.left >= 0 && r.right <= innerWidth * .5 && r.width > 80 && r.height > innerHeight * .35;
@@ -528,6 +528,7 @@
     const candidates = new Set();
     const collect = (seed) => {
       for (let node = seed; node && node !== document.body; node = node.parentElement) {
+        if (scope !== document && !scope.contains(node)) break;
         if (leftPane(node)) candidates.add(node);
       }
     };
@@ -537,7 +538,7 @@
       || (b.scrollHeight - b.clientHeight) - (a.scrollHeight - a.clientHeight))[0];
     // Do not stop at a non-scrolling overflow:hidden wrapper around the rows.
     // Look at every level even if this viewport contains only child Ads.
-    const seeds = [...items.map((item) => item.el), ...document.querySelectorAll('[role="rowheader"], [role="treeitem"]')];
+    const seeds = [...items.map((item) => item.el), ...scope.querySelectorAll('[role="rowheader"], [role="treeitem"]')];
     seeds.forEach(collect);
     let best = choose();
     if (best && best.scrollHeight > best.clientHeight + 2 && /auto|scroll|overlay/.test(getComputedStyle(best).overflowY)) return best;
@@ -546,9 +547,10 @@
     }
     // During virtualized loading there may be no rows or hit-test target yet.
     // Search only the left pane, never the settings scrollbar on the right.
-    for (const node of document.querySelectorAll('div, section, [role="grid"], [role="tree"]')) {
+    for (const node of scope.querySelectorAll('div, section, [role="grid"], [role="tree"]')) {
       if (leftPane(node)) candidates.add(node);
     }
+    if (scope !== document && leftPane(scope)) candidates.add(scope);
     return choose() || null;
   }
 
@@ -599,11 +601,15 @@
 
   async function settleEntityListAt(top, searchQuery = null, searchLevel = null) {
     let scroller = null, stable = 0, previous = '', emptyResult = false;
+    let lastStatus = 'chưa đọc được cây kết quả';
     const deadline = Date.now() + Math.max(3000, Number(state.settings.maxLoadWaitMs) || 30000);
     while (Date.now() < deadline) {
       emptyResult = false;
       if (state.stopRequested) throw new Error('__MAC_STOPPED__');
-      const detected = findLeftScroller([]);
+      const scope = searchQuery === null ? document : document.getElementById('campaign_structure_tree_root');
+      const search = searchQuery === null ? null : findEntitySearchInput();
+      if (searchQuery !== null && (!scope || !search || search.value !== searchQuery)) throw new Error('Ô Search đã thay đổi trong lúc tìm. Tool dừng để tránh chọn kết quả cũ.');
+      const detected = findLeftScroller([], scope);
       if (detected !== scroller) { stable = 0; previous = ''; scroller = detected; }
       const desired = scroller ? Math.min(top, Math.max(0, scroller.scrollHeight - scroller.clientHeight)) : 0;
       if (scroller && Math.abs(scroller.scrollTop - desired) > 1) {
@@ -615,8 +621,9 @@
         }
       }
       await sleep(250);
-      if (findLeftScroller([]) !== scroller) { stable = 0; previous = ''; continue; }
-      const root = scroller || document;
+      if (findLeftScroller([], scope) !== scroller) { stable = 0; previous = ''; lastStatus = 'khung danh sách đang thay đổi'; continue; }
+      // Other left-side panels can keep loading after Search has finished.
+      const root = searchQuery === null ? (scroller || document) : scope;
       const bounds = scroller ? scroller.getBoundingClientRect() : { top: 0, bottom: innerHeight };
       const rows = [...root.querySelectorAll('[role="rowheader"], [role="treeitem"]')]
         .filter((row) => {
@@ -624,8 +631,7 @@
           return visible(row) && r.right <= innerWidth * .5 && r.bottom > bounds.top && r.top < bounds.bottom;
         });
       const signature = rows.map((row) => `${row.getAttribute('aria-label')}:${row.textContent || ''}:${Math.round(row.getBoundingClientRect().top)}`).join('|');
-      const search = searchQuery === null ? null : findEntitySearchInput();
-      if (searchQuery !== null && (!search || search.value !== searchQuery)) throw new Error('Ô Search đã thay đổi trong lúc tìm. Tool dừng để tránh chọn kết quả cũ.');
+      if (searchQuery !== null && (findEntitySearchInput() !== search || search.value !== searchQuery)) throw new Error('Ô Search đã thay đổi trong lúc tìm. Tool dừng để tránh chọn kết quả cũ.');
       const loading = search?.getAttribute('aria-busy') === 'true' || [...root.querySelectorAll('[aria-busy="true"], [role="progressbar"], [class*="skeleton" i]')]
         .some((node) => visible(node) && node.getBoundingClientRect().right <= innerWidth * .5);
       const signatureWithPosition = `${Math.round(scroller?.scrollTop || 0)}:${scroller?.scrollHeight || 0}:${signature}`;
@@ -635,19 +641,20 @@
         ? rows.some((row) => LEVEL_CONFIG[searchLevel].rowLabel.test(row.getAttribute('aria-label') || row.getAttribute('data-level') || ''))
         : rows.length;
       emptyResult = searchQuery !== null && !hasResults && !loading && stable >= 2;
+      lastStatus = `${rows.length} hàng, ${loading ? 'còn loading trong cây' : 'không loading'}, ${stable} mẫu ổn định`;
       previous = signatureWithPosition;
       if (stable >= 2 && (hasResults || searchQuery === null)) return scroller;
     }
     // A retained parent row does not mean the requested Ad results have loaded.
     if (emptyResult) return scroller;
-    throw new Error('Danh sách bên trái chưa cuộn hoặc tải ổn định. Tool chưa quét hết; hãy thử lại khi Meta tải xong.');
+    throw new Error(`Danh sách bên trái chưa cuộn hoặc tải ổn định (${lastStatus}). Tool chưa quét hết; hãy thử lại khi Meta tải xong.`);
   }
 
   async function resetEntityListToTop(level, searchQuery = null) {
     try { return await settleEntityListAt(0, searchQuery, searchQuery === null ? null : level); }
     catch (error) {
       if (error.message === '__MAC_STOPPED__') throw error;
-      throw new Error('Danh sách Campaign/Ad set/Ad bên trái chưa tải ổn định hoặc ô Search đã thay đổi. Tool không tìm từ vị trí cuộn hiện tại; hãy mở cây danh sách rồi thử lại.');
+      throw new Error(`Không thể đọc kết quả ${LEVEL_CONFIG[level]?.output || level} sau Search: ${error.message}`);
     }
   }
 
@@ -981,7 +988,7 @@
   }
 
   function entityGrid(items) {
-    return findLeftScroller(items);
+    return findLeftScroller(items, document.getElementById('campaign_structure_tree_root') || document);
   }
 
   function entityParentContext(el) {
@@ -1293,7 +1300,7 @@
         state.selectedPath = {};
         state.selectedIds = {};
         if (!findEntitySearchInput()) throw new Error('Hãy mở ô Search trong cây Campaign/Ad set/Ad bên trái trước khi bắt đầu.');
-        respond({ ok: true, version: '6.6.2' });
+        respond({ ok: true, version: '6.6.3' });
       } else if (message.type === 'MAC_DETECT_LEVEL') {
         respond({ ok: true, level: detectCurrentLevel() });
       } else if (message.type === 'MAC_SELECT_TARGET_ENTITY') {

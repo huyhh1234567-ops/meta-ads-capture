@@ -153,12 +153,14 @@ async function check() {
 
   // Start validates Search; only the filtered lookup resets the tree.
   const searchInput = { type: 'text', value: '', getAttribute: (key) => key === 'placeholder' ? 'Search' : '', getBoundingClientRect: () => left.getBoundingClientRect() };
-  context.document.getElementById = (id) => id === 'campaign_structure_tree_root'
-    ? { getBoundingClientRect: () => left.getBoundingClientRect(), querySelectorAll: () => [searchInput] } : null;
+  const searchRoot = { getBoundingClientRect: () => left.getBoundingClientRect(),
+    contains: (node) => { for (let n = node; n; n = n.parentElement) if (n === left || n === searchRoot) return true; return node === searchInput; },
+    querySelectorAll: (selector) => selector === 'input' ? [searchInput] : context.document.querySelectorAll(selector) };
+  context.document.getElementById = (id) => id === 'campaign_structure_tree_root' ? searchRoot : null;
   left.scrollTop = 1800;
   const initialized = await new Promise((resolve) => metaMessage({ type: 'MAC_CAPTURE_INIT', settings: {} }, {}, resolve));
   assert.equal(initialized.ok, true);
-  assert.equal(initialized.version, '6.6.2');
+  assert.equal(initialized.version, '6.6.3');
   assert.equal(left.scrollTop, 1800, 'Start must not scan or reset the unfiltered tree');
 
   const normalQuery = context.document.querySelectorAll, normalRows = left.querySelectorAll;
@@ -176,13 +178,13 @@ async function check() {
 
   api.state.settings.maxLoadWaitMs = 3000;
   context.document.querySelectorAll = () => [];
-  await assert.rejects(api.resetEntityListToTop('campaign'), /chưa tải ổn định/, 'Missing sidebar must fail closed, not silently search from the middle');
+  await assert.rejects(api.resetEntityListToTop('campaign'), /chưa cuộn hoặc tải ổn định/, 'Missing sidebar must fail closed, not silently search from the middle');
   context.document.querySelectorAll = normalQuery;
   left.querySelectorAll = normalRows;
   const normalScrollTo = left.scrollTo;
   left.scrollTo = () => {};
   left.scrollTop = 1500;
-  await assert.rejects(api.resetEntityListToTop('campaign'), /không tìm từ vị trí cuộn hiện tại/, 'Never begin search if the sidebar refused to reset');
+  await assert.rejects(api.resetEntityListToTop('campaign'), /chưa cuộn hoặc tải ổn định/, 'Never begin search if the sidebar refused to reset');
   left.scrollTo = normalScrollTo; left.scrollTop = 0;
   api.state.settings = {};
   for (const level of ['campaign', 'adset', 'ad']) {
@@ -673,7 +675,7 @@ async function check() {
     setStatus: async (status) => statuses.push(status),
     send: async (_id, message) => {
       sent.push(message.type);
-      if (message.type === 'MAC_CAPTURE_INIT') return { ok: true, version: '6.6.2' };
+      if (message.type === 'MAC_CAPTURE_INIT') return { ok: true, version: '6.6.3' };
       return { ok: true, snapshot: { ...snap, name: 'Current page' } };
     },
     shouldStop: async () => false, keepBackgroundTabActive: async () => {},

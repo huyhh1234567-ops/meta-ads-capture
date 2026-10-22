@@ -94,6 +94,22 @@ const source = fs.readFileSync(path.resolve(__dirname, '../content.js'), 'utf8')
       searchInputs: 2, setting: 'Original ad setting', query: 'Second exact Ad' });
     console.log('PASS direct sibling Ad searches use their own IDs with no parent rows or selected ancestors');
 
+    await page.evaluate(() => {
+      const unrelated = document.createElement('div');
+      unrelated.id = 'unrelated-pane';
+      unrelated.style.cssText = 'position:absolute;left:0;top:300px;width:350px;height:450px;overflow:auto';
+      unrelated.innerHTML = '<div style="height:800px"><div role="progressbar" style="width:50px;height:20px">Loading another panel</div></div>';
+      document.body.append(unrelated);
+    });
+    await page.evaluate(async () => {
+      const selected = await searchTest.selectNamedEntity('First exact Ad', 'ad', {}, 'a:111111111111111');
+      if (selected.snapshot.name !== 'First exact Ad') throw new Error('Wrong selected Ad');
+      const unique = await searchTest.selectNamedEntity('Second exact Ad', 'ad');
+      if (unique.snapshot.name !== 'Second exact Ad') throw new Error('Wrong unique result');
+    });
+    await page.locator('#unrelated-pane').evaluate((node) => node.remove());
+    console.log('PASS unrelated left-side scroller and loader cannot block ready Search results');
+
     await page.evaluate(async () => {
       window.hideLoading = true; window.renderDelay = 2600;
       const selected = await searchTest.selectNamedEntity('New Launch 264 - drop 2_Female', 'ad', {}, 'a:555555555555555');
@@ -126,11 +142,13 @@ const source = fs.readFileSync(path.resolve(__dirname, '../content.js'), 'utf8')
     assert.deepEqual(blocked, [true, true, true]);
     await page.evaluate(() => { setTimeout(() => { document.querySelector('nav input').value = 'Changed by user'; }, 100); });
     await expectFailure('First exact Ad', '', /Search/);
+    await page.evaluate(() => { setTimeout(() => { document.querySelector('nav input').value = 'Changed after Enter'; }, 1000); });
+    await expectFailure('First exact Ad', '', /Không thể đọc kết quả Ad sau Search: Ô Search đã thay đổi/);
     await page.evaluate(() => { setTimeout(() => { searchTest.state.stopRequested = true; }, 100); });
     await expectFailure('First exact Ad', '', /__MAC_STOPPED__/);
     await page.evaluate(() => { searchTest.state.stopRequested = false; });
     await page.evaluate(() => { window.failLoading = true; });
-    await expectFailure('First exact Ad', '', /ổn định|tải/);
+    await expectFailure('First exact Ad', '', /còn loading trong cây/);
     await page.evaluate(() => { searchTest.state.stopRequested = true; });
     await expectFailure('First exact Ad', '', /__MAC_STOPPED__/);
     await page.evaluate(() => {

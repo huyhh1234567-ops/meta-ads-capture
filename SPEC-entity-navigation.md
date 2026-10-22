@@ -31,6 +31,7 @@ if (state.stopRequested) throw new Error('__MAC_STOPPED__');
 - Không có ô Search duy nhất: báo lỗi, không quay lại quét toàn bộ cây.
 - Chờ giao diện cập nhật tên Search trước khi Enter; giữ bảo vệ ô thiết lập trong khoảng chờ. Không dùng hàng cha còn lại để kết luận Ad đã tải xong. Khi cấp cần tìm chưa có hàng hoặc cây trống không hiện loading, tiếp tục chờ trong toàn bộ giới hạn tải đã cấu hình.
 - Không có vùng cuộn: đọc các kết quả đã lọc, kể cả kết quả rỗng ổn định; không ném lỗi chỉ vì thiếu scrollbar.
+- Sau Search, chỉ nhận vùng cuộn, hàng và loading trong `campaign_structure_tree_root`. Loading hoặc khung cuộn khác bên trái không được chặn kết quả đã sẵn sàng. Khi lỗi, giữ nguyên nguyên nhân Search thay đổi hoặc thống kê loading/hàng ổn định để chẩn đoán.
 - Có vùng cuộn: đưa danh sách kết quả đã lọc về đầu và quét đến cuối nếu cần; không quét cây chưa lọc. Chờ hàng virtualized tải ổn định.
 - Nếu không có scrollbar nhưng danh sách còn đang tải, chờ theo giới hạn cấu hình; không coi danh sách chưa tải là đã tìm hết.
 - Ưu tiên ID thật của đúng cấp đang tìm, không yêu cầu hàng cha hiển thị hoặc cha đã được chọn; không coi mọi `data-id` số là ID quảng cáo.
