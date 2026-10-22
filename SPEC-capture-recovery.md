@@ -3,7 +3,7 @@
 ## Mục tiêu
 
 Chụp ổn định mà không đổi mức zoom của tab; không mất kết quả khi một mục thất bại.
-Phụ thuộc: entity-navigation để tiếp tục đúng mục và đúng cha.
+Phụ thuộc: entity-navigation để tiếp tục thẳng đúng mục theo tên và ID riêng.
 
 ## Công nghệ và cấu trúc
 
@@ -32,6 +32,7 @@ if (await shouldStop(tab.id, sessionId)) throw new Error('__MAC_STOPPED__');
 - Có thể giữ kích thước viewport để chạy nền nếu cần, nhưng không thay đổi mức zoom người dùng.
 - Lưu danh sách việc, ngữ cảnh ID/cha, kết quả ảnh/preview đã có và mục đang xử lý sau mỗi phần thành công.
 - Khi lỗi tìm/chuẩn bị/chụp: cập nhật ngay kết quả đã có ở ô Copy; thử lại đúng mục, tối đa 3 lượt tính cả lượt đầu.
+- Retry/resume chỉ tìm mục chưa xong theo tên/ID riêng, không tìm hoặc mở lại cấp cha. Mục không yêu cầu ảnh/preview vẫn cập nhật checkpoint nhưng không điều hướng.
 - Ảnh tạm bị hụt hoặc sai cuộn phải bỏ và chụp lại mục đó từ đầu. Không đưa ảnh thiếu vào kết quả hoàn tất.
 - Sau lượt thứ ba vẫn lỗi: dừng ở mục đó, hiển thị lỗi và kết quả đã có ngay; không đợi hết danh sách, không nhảy qua mục lỗi.
 - Không tạo hay tự tải TXT; không upload báo cáo TXT. Kết quả ở ô Copy, kể cả khi chưa có ảnh nào thành công.

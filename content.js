@@ -1107,7 +1107,7 @@
     return [...new Set([...fromUrl, ...selected])];
   }
 
-  async function selectNamedEntity(target, level, expectedParents = {}, expectedId = '', expectedParentIds = {}) {
+  async function selectNamedEntity(target, level, expectedParents = {}, expectedId = '') {
     if (!target?.trim()) throw new Error(`Tên ${LEVEL_CONFIG[level]?.output || level} đang trống.`);
     const checkedId = (id, key) => {
       if (!id) return '';
@@ -1116,19 +1116,16 @@
       return normalized;
     };
     expectedId = checkedId(expectedId, level);
-    expectedParentIds = Object.fromEntries(Object.entries(expectedParentIds).map(([key, id]) => [key, checkedId(id, key)]));
     state.currentLevel = level;
     const requireExact = level === 'ad' || level === 'adset' || level === 'campaign';
     const currentMatches = requireExact
       ? normalizedExact(currentEntityName(level)) === normalizedExact(target)
       : fuzzyMatchScore(currentEntityName(level), target) >= 500;
-    const parentsSelected = Object.entries(expectedParents).every(([key, value]) => normalizedExact(state.selectedPath[key]) === normalizedExact(value))
-      && Object.entries(expectedParentIds).every(([key, value]) => !value || normalizedEntityId(state.selectedIds?.[key], key) === value);
     const verifiedScreenId = () => {
       const ids = currentEntityIds(level);
       return ids.length === 1 && ids[0] === String(expectedId);
     };
-    if (isLevelScreen(level) && currentMatches && parentsSelected && expectedId && verifiedScreenId()) {
+    if (isLevelScreen(level) && currentMatches && expectedId && verifiedScreenId()) {
       rememberSelectedPath(level, currentEntityName(level) || target, expectedId);
       return { done: false, snapshot: await prepareEntity(level) };
     }
@@ -1173,39 +1170,36 @@
       if (state.stopRequested) throw new Error('__MAC_STOPPED__');
       const items = entityItems(level);
       items.forEach((item) => scanned.add(item.name));
-      const scopedItems = items.filter((item) => matchesExpectedParents(item, expectedParents, level, expectedParentIds));
       const wanted = normalizedExact(target).replace(/(?:…|\.{2,})+$/g, '').trim();
-      for (const item of scopedItems) {
+      for (const item of items) {
         if (wanted.length >= 6 && item.variants.some((value) => {
           const name = normalizedExact(value);
           return name.startsWith(wanted) && (/[\s_,.:/\-]/.test(name[wanted.length] || '') || /(?:…|\.{2,})$/.test(target));
         })) nearby.add(item.name);
       }
-      const idMatch = expectedId && scopedItems.find((item) => entityIds(item, level).includes(String(expectedId)));
+      const idMatch = expectedId && items.find((item) => entityIds(item, level).includes(String(expectedId)));
       if (idMatch && !exactEntityMatch(idMatch, target)) {
         throw new Error(`ID ${expectedId} thuộc ${LEVEL_CONFIG[level]?.output || level} "${idMatch.name}", khác tên yêu cầu "${target}". Hãy cập nhật tên đầy đủ từ Meta hoặc import file mới; tool không tự đổi tên hay chọn gần đúng.`);
       }
       const matches = requireExact
         ? items.filter((item) => exactEntityMatch(item, target)).map((item) => ({ ...item, score: 1000 }))
         : items.map((item) => ({ ...item, score: fuzzyMatchScore(item.name, target) })).filter((item) => item.score >= 120).sort((a,b) => b.score - a.score);
-      const parentMatches = matches.filter((item) => matchesExpectedParents(item, expectedParents, level, expectedParentIds));
       const itemIds = (item) => entityIds(item, level);
-      const compatible = expectedId ? parentMatches.filter((item) => !itemIds(item).length || itemIds(item).includes(String(expectedId))) : parentMatches;
-      if (matches.length && !parentMatches.length) rejection = 'Tên khớp nhưng không thuộc Campaign/Ad set cha đã yêu cầu.';
-      if (parentMatches.length && !compatible.length) {
-        rejection = `Tên khớp nhưng ID trong Meta (${[...new Set(parentMatches.flatMap(itemIds))].join(', ')}) khác ID trong file (${expectedId}).`;
+      const compatible = expectedId ? matches.filter((item) => !itemIds(item).length || itemIds(item).includes(String(expectedId))) : matches;
+      if (matches.length && !compatible.length) {
+        rejection = `Tên khớp nhưng ID trong Meta (${[...new Set(matches.flatMap(itemIds))].join(', ')}) khác ID trong file (${expectedId}).`;
       }
       const exactNames = compatible.filter((item) => item.variants.some((value) => normalizedExact(value) === normalizedExact(target)));
       const candidates = exactNames.length ? exactNames : compatible;
       const byId = expectedId ? compatible.find((item) => itemIds(item).includes(String(expectedId))) : null;
-      if (!byId && candidates.length > 1) throw new Error(`Có nhiều ${LEVEL_CONFIG[level]?.output} cùng tên trong nhóm hiện tại. Meta chưa cung cấp ID để phân biệt; tool dừng để tránh chụp nhầm.`);
+      if (!byId && candidates.length > 1) throw new Error(`Có nhiều ${LEVEL_CONFIG[level]?.output} cùng tên trong kết quả tìm kiếm. Meta chưa cung cấp ID để phân biệt; tool dừng để tránh chụp nhầm.`);
       const grid = entityGrid(items);
       if (byId) return openMatch(byId);
       for (const match of candidates) {
         const key = candidateKey(match, grid);
         if (!found.has(key)) found.set(key, { key, top: grid?.scrollTop || 0 });
       }
-      if (found.size > 1) throw new Error(`Có nhiều ${LEVEL_CONFIG[level]?.output} cùng tên trong nhóm hiện tại. Hãy import ID để phân biệt; tool dừng để tránh chụp nhầm.`);
+      if (found.size > 1) throw new Error(`Có nhiều ${LEVEL_CONFIG[level]?.output} cùng tên trong kết quả tìm kiếm. Hãy import ID để phân biệt; tool dừng để tránh chụp nhầm.`);
       if (!grid) { reachedBottom = true; break; }
       if (!items.length) {
         // Ads-only viewports are normal while looking for a Campaign/Ad set.
@@ -1231,15 +1225,14 @@
       const candidate = [...found.values()][0];
       const grid = await settleEntityListAt(candidate.top, target);
       const match = entityItems(level).find((item) => exactEntityMatch(item, target)
-        && matchesExpectedParents(item, expectedParents, level, expectedParentIds)
         && candidateKey(item, grid) === candidate.key);
       if (!match) throw new Error('Danh sách đã thay đổi sau khi quét; tool dừng để tránh chọn nhầm.');
       return openMatch(match);
     }
     const parentPath = ['campaign', 'adset'].filter((key) => expectedParents?.[key]).map((key) => expectedParents[key]).join(' → ');
-    const mode = `${requireExact ? ' theo đúng tên đầy đủ' : ''}${parentPath ? ` dưới ${parentPath}` : ''}`;
+    const mode = `${requireExact ? ' theo đúng tên đầy đủ' : ''}${parentPath ? ` (nhóm trong file: ${parentPath})` : ''}`;
     if (rejection) throw new Error(`Đã thấy ${LEVEL_CONFIG[level]?.output || level}: ${target}. ${rejection} Tool dừng để tránh chụp nhầm.`);
-    if (nearby.size) throw new Error(`Không có ${LEVEL_CONFIG[level]?.output || level} tên đầy đủ "${target}"${parentPath ? ` dưới ${parentPath}` : ''}. Các tên có thêm hậu tố trong Meta: ${[...nearby].slice(0,8).join(' | ')}. Hãy dùng tên đầy đủ hoặc import file mới có ID; tool không tự chọn một mục cùng tiền tố.`);
+    if (nearby.size) throw new Error(`Không có ${LEVEL_CONFIG[level]?.output || level} tên đầy đủ "${target}". Các tên có thêm hậu tố trong Meta: ${[...nearby].slice(0,8).join(' | ')}. Hãy dùng tên đầy đủ hoặc import file mới có ID; tool không tự chọn một mục cùng tiền tố.`);
     throw new Error(`Không tìm thấy ${LEVEL_CONFIG[level]?.output || level}${mode}: ${target}. Đã đọc: ${[...scanned].slice(0,8).join(' | ') || 'không có'}`);
   }
 
@@ -1300,11 +1293,11 @@
         state.selectedPath = {};
         state.selectedIds = {};
         if (!findEntitySearchInput()) throw new Error('Hãy mở ô Search trong cây Campaign/Ad set/Ad bên trái trước khi bắt đầu.');
-        respond({ ok: true, version: '6.6.1' });
+        respond({ ok: true, version: '6.6.2' });
       } else if (message.type === 'MAC_DETECT_LEVEL') {
         respond({ ok: true, level: detectCurrentLevel() });
       } else if (message.type === 'MAC_SELECT_TARGET_ENTITY') {
-        respond({ ok: true, ...(await selectNamedEntity(message.name, message.level || 'ad', message.parentNames || {}, message.id || '', message.parentIds || {})) });
+        respond({ ok: true, ...(await selectNamedEntity(message.name, message.level || 'ad', message.parentNames || {}, message.id || '')) });
       } else if (message.type === 'MAC_GET_PREVIEW_LINK') {
         respond({ ok: true, ...(await capturePreviewLink(message.maxWaitMs, message.level)) });
       } else if (message.type === 'MAC_CONTENT_STOP') {

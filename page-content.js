@@ -94,7 +94,7 @@
       if (message.type === 'MAC_PAGE_CAPTURE_INIT') {
         state.settings = message.settings || {}; state.stopped = false;
         state.container = findContainer(); state.originalTop = state.container.scrollTop;
-        return { ok: true, version: '6.6.1' };
+        return { ok: true, version: '6.6.2' };
       }
       if (message.type === 'MAC_PAGE_ENTITY_PREPARE') return { ok: true, snapshot: await prepare() };
       if (message.type === 'MAC_PAGE_PREVIEW_SNAPSHOT') return { ok: true, snapshot: snapshot() };

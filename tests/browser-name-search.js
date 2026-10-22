@@ -81,15 +81,18 @@ const source = fs.readFileSync(path.resolve(__dirname, '../content.js'), 'utf8')
       window.searchTest.state.settings.maxLoadWaitMs = 3000;
     });
     const result = await page.evaluate(async () => {
-      const first = await window.searchTest.selectNamedEntity('First exact Ad', 'ad', {}, 'a:111111111111111');
-      const second = await window.searchTest.selectNamedEntity('Second exact Ad', 'ad', {}, 'a:222222222222222');
+      searchTest.state.selectedPath = { campaign: 'Old Campaign', adset: 'Old Ad set' };
+      searchTest.state.selectedIds = { campaign: '888888888888888', adset: '999999999999999' };
+      const parents = { campaign: 'Imported Campaign', adset: 'Imported Ad set' };
+      const first = await window.searchTest.selectNamedEntity('First exact Ad', 'ad', parents, 'a:111111111111111');
+      const second = await window.searchTest.selectNamedEntity('Second exact Ad', 'ad', parents, 'a:222222222222222');
       return { names: [first.snapshot.name, second.snapshot.name], queries, clicks, searchInputs,
         setting: document.getElementById('ad-name').value, query: document.querySelector('nav input').value };
     });
     assert.deepEqual(result, { names: ['First exact Ad', 'Second exact Ad'],
       queries: ['First exact Ad', 'Second exact Ad'], clicks: ['111111111111111', '222222222222222'],
       searchInputs: 2, setting: 'Original ad setting', query: 'Second exact Ad' });
-    console.log('PASS wait for asynchronous input state before Enter; each query opens its exact ID');
+    console.log('PASS direct sibling Ad searches use their own IDs with no parent rows or selected ancestors');
 
     await page.evaluate(async () => {
       window.hideLoading = true; window.renderDelay = 2600;

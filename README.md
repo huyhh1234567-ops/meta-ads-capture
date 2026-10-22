@@ -1,4 +1,14 @@
-# Meta Ads Capture & Link Mapper 6.6.1
+# Meta Ads Capture & Link Mapper 6.6.2
+
+## Bản 6.6.2 — tìm thẳng mục cần xử lý theo tên và ID, 22/10/2026
+
+- Mỗi mục được tìm trực tiếp bằng tên riêng rồi đối chiếu ID của chính mục đó. Xử lý Ad không tìm/mở lại Campaign và Ad set trước; xử lý Ad set không tìm/mở Campaign trước. Retry và tiếp tục phiên cũng chỉ tìm mục chưa xong.
+- Campaign/Ad set chỉ được tìm khi chính cấp đó có mục cần chụp. Cấp bị bỏ tick vẫn là tiêu đề trong Copy, không tạo thao tác tìm kiếm riêng. Các mục đã hoàn tất không bị chụp/upload lại.
+- Kết quả Search không cần hiển thị hàng cha hoặc có cha đã chọn đúng từ trước. ID riêng của mục quyết định hàng cần mở; vẫn kiểm tra lại tên và ID trên màn Edit trước khi chụp. Nếu thiếu ID, tên đầy đủ phải duy nhất trong kết quả; tên trùng cần ID, không dùng ID cha để đoán Ad.
+
+Cập nhật: Reload extension → F5 Meta → **Tiếp tục từ mục chưa xong**. Không cần import lại hay Deploy lại Apps Script.
+
+Kiểm chứng: hồi quy điều phối kiểm tra chỉ tìm Ad khi cấp cha bị tắt, mỗi cấp được bật chỉ tìm một lần, và retry/resume chỉ tìm Ad chưa xong. Chrome riêng kiểm tra hai Ad liên tiếp bằng ID với hàng cha ẩn và đường dẫn cha cũ. Chưa chạy toàn bộ chụp/upload bằng bản mới trên tài khoản Meta thật.
 
 ## Bản 6.6.1 — chờ tên Search và Ad con tải xong, 21/10/2026
 

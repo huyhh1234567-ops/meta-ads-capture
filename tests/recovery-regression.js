@@ -232,21 +232,55 @@ const tests = [
     assert.equal(longerWait.final().state, 'done');
     assert.equal(longerWait.uploads.length, 1);
   }],
-  ['disabled ancestors still navigate by ID before duplicate-name child Ads', async () => {
+  ['disabled ancestors stay in the report but only the requested Ads are searched by name and ID', async () => {
     const tree = [{ level: 'campaign', uid: 'c', name: 'Same Campaign', id: '111111111111111', captureEnabled: false, children: [
       { level: 'adset', uid: 's', name: 'Same Ad set', id: '222222222222222', captureEnabled: false, children: [
-        { level: 'ad', uid: 'a', name: 'Same Ad', id: '333333333333333' }
+        { level: 'ad', uid: 'a', name: 'Same Ad', id: '333333333333333' },
+        { level: 'ad', uid: 'b', name: 'Same Ad', id: '444444444444444' }
       ] }
     ] }];
     const run = harness({});
     await run.run(1, { ...settings, targetCampaigns: [], captureTree: tree, captureAdPreview: false });
     assert.equal(run.final().state, 'done');
-    assert.equal(run.uploads.length, 1);
+    assert.equal(run.uploads.length, 2);
     const selected = run.messages.filter((message) => message.type === 'MAC_SELECT_TARGET_ENTITY');
-    assert.deepEqual(selected.slice(-3).map((message) => message.level), ['campaign', 'adset', 'ad']);
-    assert.equal(selected.at(-1).id, '333333333333333');
-    assert.deepEqual(selected.at(-1).parentIds, { campaign: '111111111111111', adset: '222222222222222' });
+    assert.deepEqual(selected.map((message) => [message.level, message.name, message.id]), [
+      ['ad', 'Same Ad', '333333333333333'], ['ad', 'Same Ad', '444444444444444']
+    ]);
     assert.ok(run.final().result.report.includes('Campaign Same Campaign:\n\nAd set Same Ad set:\n\nAd Same Ad:'));
+  }],
+  ['enabled Campaign, Ad set and sibling Ads are each searched once as their own capture job', async () => {
+    const tree = [{ level: 'campaign', uid: 'c', name: 'Campaign', id: '111111111111111', children: [
+      { level: 'adset', uid: 's', name: 'Ad set', id: '222222222222222', children: [
+        { level: 'ad', uid: 'a', name: 'First Ad', id: '333333333333333' },
+        { level: 'ad', uid: 'b', name: 'Second Ad', id: '444444444444444' }
+      ] }
+    ] }];
+    const run = harness({});
+    await run.run(1, { ...settings, targetCampaigns: [], captureTree: tree });
+    assert.equal(run.final().state, 'done');
+    assert.deepEqual(run.messages.filter((message) => message.type === 'MAC_SELECT_TARGET_ENTITY').map((message) => message.name),
+      ['Campaign', 'Ad set', 'First Ad', 'Second Ad']);
+  }],
+  ['hierarchical retries and resume search only the unfinished Ad', async () => {
+    const tree = [{ level: 'campaign', uid: 'c', name: 'Parent Campaign', captureEnabled: false, children: [
+      { level: 'adset', uid: 's', name: 'Parent Ad set', captureEnabled: false, children: [
+        { level: 'ad', uid: 'a', name: 'First Ad', id: '333333333333333' },
+        { level: 'ad', uid: 'b', name: 'Second Ad', id: '444444444444444' }
+      ] }
+    ] }];
+    const supplied = { ...settings, targetCampaigns: [], captureTree: tree }, storage = {};
+    const failed = harness({ selectFailure: (name) => name === 'Second Ad' }, storage);
+    await failed.run(1, supplied);
+    assert.equal(failed.final().state, 'error');
+    assert.deepEqual(failed.messages.filter((message) => message.type === 'MAC_SELECT_TARGET_ENTITY').map((message) => message.name),
+      ['First Ad', 'Second Ad', 'Second Ad', 'Second Ad']);
+    const resumed = harness({}, storage);
+    await resumed.run(9, { ...supplied, resumeCapture: true });
+    assert.equal(resumed.final().state, 'done');
+    assert.deepEqual(resumed.messages.filter((message) => message.type === 'MAC_SELECT_TARGET_ENTITY').map((message) => [message.name, message.id]),
+      [['Second Ad', '444444444444444']]);
+    assert.equal(resumed.uploads.length, 1);
   }],
   ['a restarted worker exposes partial results and the resume button, without stopping a live session', async () => {
     const storage = { captureCheckpoint: { version: '6.4.0', nextIndex: 1, jobs: [{}, {}] }, captureStatuses: {

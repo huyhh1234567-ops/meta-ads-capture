@@ -4,7 +4,7 @@ Ngày: 2026-10-11. Nguồn: sáu yêu cầu của người dùng và xác nhận
 
 | Module | Trách nhiệm | Phụ thuộc | Đặc tả |
 |---|---|---|---|
-| entity-navigation | Tìm khi không có thanh cuộn; xác minh ID và ngữ cảnh cha cho tên trùng | — | SPEC-entity-navigation.md |
+| entity-navigation | Search thẳng tên mục cần xử lý, xác minh ID riêng; không tìm lại cấp cha | — | SPEC-entity-navigation.md |
 | capture-recovery | Chụp không đổi zoom; lưu tiến độ; thử lại mục lỗi và trả kết quả tại chỗ | entity-navigation | SPEC-capture-recovery.md |
 | region-highlights | Khoanh riêng Advantage+, TA và Budget trên ảnh | capture-recovery | SPEC-region-highlights.md |
 

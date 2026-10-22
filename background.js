@@ -583,19 +583,7 @@ async function prepareCaptureJob(tab, settings, job, sessionId) {
     }
     prep = await send(tab.id, { type: 'MAC_ENTITY_PREPARE', level: job.level, name: job.name || '', settings });
   } else if (job.name) {
-    // Re-establish ancestors even if their images were disabled or completed
-    // before resume. A same-name Ad under another Ad set must never be used.
-    const selectedParents = {}, selectedParentIds = {};
-    for (const level of ['campaign', 'adset']) {
-      if (level === job.level) break;
-      const name = job.parentNames?.[level];
-      if (!name) continue;
-      const response = await send(tab.id, { type: 'MAC_SELECT_TARGET_ENTITY', level, name, id: job.parentIds?.[level] || '', parentNames: { ...selectedParents }, parentIds: { ...selectedParentIds } });
-      if (!response?.ok || response.done) throw new Error(response?.error || `Không tìm thấy cấp cha: ${name}`);
-      selectedParents[level] = name;
-      selectedParentIds[level] = job.parentIds?.[level] || '';
-    }
-    prep = await send(tab.id, { type: 'MAC_SELECT_TARGET_ENTITY', level: job.level, name: job.name, id: job.id || '', parentNames: job.parentNames || {}, parentIds: job.parentIds || {} });
+    prep = await send(tab.id, { type: 'MAC_SELECT_TARGET_ENTITY', level: job.level, name: job.name, id: job.id || '', parentNames: job.parentNames || {} });
   } else {
     prep = await send(tab.id, { type: 'MAC_ENTITY_PREPARE', level: job.level, settings });
   }
@@ -686,7 +674,7 @@ async function runCapture(tab, suppliedSettings, sessionId = suppliedSettings?.s
     await setStatus({ state: 'running', progress: Math.round(nextIndex / Math.max(1, jobs.length) * 95), message: 'Đang chuẩn bị trang…', result: capturePayload(tab, settings, captured), error: null, targetTabId: tab.id, stopRequested: false, resumeAvailable: false, cleanupPending: true }, sessionId);
     const initialized = await send(tab.id, { type: 'MAC_CAPTURE_INIT', settings });
     if (!initialized?.ok) throw new Error(initialized?.error || 'Tab không phản hồi khi khởi tạo. Hãy F5 tab cần chụp rồi bấm Bắt đầu lại.');
-    if (initialized.version !== '6.6.1') throw new Error('Tab còn dùng mã chụp cũ. Hãy F5 tab một lần sau khi tải lại extension.');
+    if (initialized.version !== '6.6.2') throw new Error('Tab còn dùng mã chụp cũ. Hãy F5 tab một lần sau khi tải lại extension.');
     if (!jobs.length) {
       const detected = await send(tab.id, { type: 'MAC_DETECT_LEVEL' });
       if (!detected?.level) throw new Error('Không xác định được cấp Campaign, Ad set hay Ad hiện tại.');
@@ -710,8 +698,8 @@ async function runCapture(tab, suppliedSettings, sessionId = suppliedSettings?.s
         try {
           if (await shouldStop(tab.id, sessionId)) throw new Error('__MAC_STOPPED__');
           await setStatus({ state: 'running', retrying: attempt > 1, message: `${job.label} ${index + 1}/${jobs.length}: ${attempt > 1 ? `thử lại ${attempt}/3…` : 'đang chuẩn bị…'}`, progress: Math.round(index / jobs.length * 95), error: null }, sessionId);
-          const prep = await prepareCaptureJob(tab, settings, job, sessionId);
           if (captureEnabled && (captureImage || previewRequested)) {
+            const prep = await prepareCaptureJob(tab, settings, job, sessionId);
             if (!record) {
               let image = null, filename = '', link = '';
               if (captureImage) {

@@ -158,7 +158,7 @@ async function check() {
   left.scrollTop = 1800;
   const initialized = await new Promise((resolve) => metaMessage({ type: 'MAC_CAPTURE_INIT', settings: {} }, {}, resolve));
   assert.equal(initialized.ok, true);
-  assert.equal(initialized.version, '6.6.1');
+  assert.equal(initialized.version, '6.6.2');
   assert.equal(left.scrollTop, 1800, 'Start must not scan or reset the unfiltered tree');
 
   const normalQuery = context.document.querySelectorAll, normalRows = left.querySelectorAll;
@@ -347,7 +347,10 @@ async function check() {
     await assert.rejects(selectionContext.selectNamedEntity('Exact imported name', level, {}, '111111111111111'), /Có nhiều/, 'Unknown IDs must not allow ambiguous same-name selection');
     selectionContext.matchesExpectedParents = () => false;
     context.document.querySelectorAll = () => [namedRow];
-    await assert.rejects(selectionContext.selectNamedEntity('Exact imported name', level, {}, '111111111111111'), /Tên khớp nhưng không thuộc/);
+    actualId = '111111111111111';
+    selectionContext.readOnlyClick = (node) => { assert.equal(node, namedRow); clicks++; selectedCampaign = 'Exact imported name'; };
+    assert.equal((await selectionContext.selectNamedEntity('Exact imported name', level, { campaign: 'Not opened' }, actualId)).snapshot.name,
+      'Exact imported name', 'The entity ID is sufficient without opening its imported ancestors');
     selectionContext.matchesExpectedParents = () => true;
 
     // A shortened input is not the same name as two real suffixed entities.
@@ -670,7 +673,7 @@ async function check() {
     setStatus: async (status) => statuses.push(status),
     send: async (_id, message) => {
       sent.push(message.type);
-      if (message.type === 'MAC_CAPTURE_INIT') return { ok: true, version: '6.6.1' };
+      if (message.type === 'MAC_CAPTURE_INIT') return { ok: true, version: '6.6.2' };
       return { ok: true, snapshot: { ...snap, name: 'Current page' } };
     },
     shouldStop: async () => false, keepBackgroundTabActive: async () => {},

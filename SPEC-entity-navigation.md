@@ -8,7 +8,7 @@ Không thay đổi thiết lập quảng cáo hoặc chọn một mục chỉ v�
 ## Công nghệ và cấu trúc
 
 Chrome extension Manifest V3, JavaScript thuần, không thêm thư viện.
-`content.js`: nhận diện và chọn mục; `background.js`: gửi ngữ cảnh cha.
+`content.js`: nhận diện và chọn mục; `background.js`: gửi thẳng tên và ID của mục cần xử lý.
 `popup.js` và `xlsx-parser.js`: giữ ID từ dữ liệu nhập; `tests/check.js`: hồi quy.
 
 ## Lệnh kiểm tra
@@ -27,17 +27,17 @@ if (state.stopRequested) throw new Error('__MAC_STOPPED__');
 
 ## Tiêu chí thành công
 
-- Trừ mục đang mở đã xác minh cả tên, ID và cha, mỗi lần chọn thay tên trong ô Search của cây bên trái và nhấn Enter trước khi đọc kết quả. Không dùng ô Search ngoài cây hoặc ô thiết lập quảng cáo.
+- Trừ mục đang mở đã xác minh tên và ID riêng, mỗi lần chọn thay tên của chính mục đó trong ô Search của cây bên trái và nhấn Enter trước khi đọc kết quả. Không dùng ô Search ngoài cây hoặc ô thiết lập quảng cáo.
 - Không có ô Search duy nhất: báo lỗi, không quay lại quét toàn bộ cây.
 - Chờ giao diện cập nhật tên Search trước khi Enter; giữ bảo vệ ô thiết lập trong khoảng chờ. Không dùng hàng cha còn lại để kết luận Ad đã tải xong. Khi cấp cần tìm chưa có hàng hoặc cây trống không hiện loading, tiếp tục chờ trong toàn bộ giới hạn tải đã cấu hình.
 - Không có vùng cuộn: đọc các kết quả đã lọc, kể cả kết quả rỗng ổn định; không ném lỗi chỉ vì thiếu scrollbar.
 - Có vùng cuộn: đưa danh sách kết quả đã lọc về đầu và quét đến cuối nếu cần; không quét cây chưa lọc. Chờ hàng virtualized tải ổn định.
 - Nếu không có scrollbar nhưng danh sách còn đang tải, chờ theo giới hạn cấu hình; không coi danh sách chưa tải là đã tìm hết.
-- Ưu tiên Campaign ID, Ad set ID, Ad ID thật cùng ngữ cảnh cha; không coi mọi `data-id` số là ID quảng cáo.
+- Ưu tiên ID thật của đúng cấp đang tìm, không yêu cầu hàng cha hiển thị hoặc cha đã được chọn; không coi mọi `data-id` số là ID quảng cáo.
 - ID DOM `ads_campaign_structure_item_<số>` chỉ có hiệu lực khi hàng điều hướng có nhãn đúng cấp Campaign/Ad set/Ad.
 - ID import `cg:<số>` (Campaign), `as:<số>` hoặc `c:<số>` (Ad set), `ad:<số>` hoặc `a:<số>` (Ad) được chuẩn hóa thành chuỗi số khi so sánh, kể cả ID cha. Không chuyển ID qua Number; không bỏ tiền tố không biết hoặc tiền tố của cấp khác để cố khớp. Giữ nguyên ID/UID nguồn và checkpoint.
-- Vẫn điều hướng đúng cha khi bỏ tick chụp Campaign/Ad set. Tên giống nhau dưới các cha khác nhau không bị trộn.
-- Hai mục cùng tên dưới cùng cha: dùng ID để phân biệt khi có dữ liệu xác minh. Nếu không đủ ID, báo cần ID/ngữ cảnh, không chọn bừa.
+- Không tìm lại cấp cha trước mục con. Cấp bị bỏ tick chụp không phát sinh tìm kiếm; cấp được bật chỉ tìm khi đến chính mục chụp của cấp đó. Giữ cây cha trong báo cáo và checkpoint.
+- Hai mục cùng tên trong kết quả Search: dùng ID riêng để phân biệt. Nếu không đủ ID, báo cần ID, không dùng ID cha hoặc cha đã chọn để suy ra mục.
 - Xác minh mục vừa mở trước khi chụp, không nhập vào ô naming, Gender hay Budget để tìm mục.
 - Dừng luôn có tác dụng cả khi chờ tải hoặc quét danh sách.
 

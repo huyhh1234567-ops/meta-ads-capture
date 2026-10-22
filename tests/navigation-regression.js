@@ -243,7 +243,7 @@ test('a multi-selection URL cannot verify one same-name Ad as the only open enti
   await assert.rejects(selection.select('Same full name', 'ad', {}, ids.wanted), /ID|đúng màn hình/);
 });
 
-test('parent IDs distinguish duplicate Campaign and Ad set names', async () => {
+test('duplicate Ads require their own ID even when imported parent IDs exist', async () => {
   const f = fixture();
   const wrongCampaign = f.row('Duplicate Campaign', 'campaign', { 'data-campaign-id': ids.wrongParent });
   const wrongAdset = f.row('Duplicate Ad set', 'adset', { 'data-adset-id': ids.other });
@@ -253,11 +253,34 @@ test('parent IDs distinguish duplicate Campaign and Ad set names', async () => {
   const rightAd = f.row('Duplicate Ad', 'ad', { 'data-campaign-id': ids.parent, 'data-adset-id': ids.wanted });
   f.setRows([wrongCampaign, wrongAdset, wrongAd, rightCampaign, rightAdset, rightAd]);
   const selection = selectionFixture(f, { screenId: '' });
-  const result = await selection.select('Duplicate Ad', 'ad',
+  await assert.rejects(selection.select('Duplicate Ad', 'ad',
     { campaign: 'Duplicate Campaign', adset: 'Duplicate Ad set' }, '',
-    { campaign: ids.parent, adset: ids.wanted });
-  assert.equal(selection.clicked(), rightAd);
-  assert.equal(result.snapshot.name, 'Duplicate Ad');
+    { campaign: ids.parent, adset: ids.wanted }), /nhiều/);
+  assert.equal(selection.clicked(), null);
+});
+
+for (const [level, label] of [['adset', 'Ad set'], ['ad', 'Ad']]) {
+  test(`${label}: directly select its own ID with hidden parents and a stale selected path`, async () => {
+    const f = fixture();
+    const wrong = f.row('Same full name', level, { [`data-${level}-id`]: ids.other });
+    const right = f.row('Same full name', level, { [`data-${level}-id`]: ids.wanted });
+    f.setRows([wrong, right]);
+    f.api.state.selectedPath = { campaign: 'Previously opened Campaign', adset: 'Previously opened Ad set' };
+    f.api.state.selectedIds = { campaign: ids.wrongParent, adset: ids.other };
+    const selection = selectionFixture(f);
+    const result = await selection.select('Same full name', level,
+      { campaign: 'Imported Campaign', adset: 'Imported Ad set' }, ids.wanted, { campaign: ids.parent });
+    assert.equal(selection.clicked(), right);
+    assert.equal(result.snapshot.name, 'Same full name');
+  });
+}
+
+test('a unique full name can be selected directly without ID or visible parent rows', async () => {
+  const f = fixture(), row = f.row('Unique Ad', 'ad');
+  f.setRows([row]);
+  const selection = selectionFixture(f, { screenId: '' });
+  assert.equal((await selection.select('Unique Ad', 'ad', { campaign: 'Imported Campaign', adset: 'Imported Ad set' })).snapshot.name, 'Unique Ad');
+  assert.equal(selection.clicked(), row);
 });
 
 test('matching parent names cannot override known different parent IDs', () => {
