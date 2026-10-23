@@ -38,6 +38,7 @@ const isGoogleAdsUrl = (value) => /^https:\/\/ads\.google\.com\//i.test(value ||
 const isAdsUrl = (value) => isMetaAdsUrl(value) || isGoogleAdsUrl(value);
 const isCaptureUrl = (value, settings) => settings?.captureMode === 'regular' ? /^https?:\/\//i.test(value || '') : isAdsUrl(value);
 const activeCaptureTabs = new Set();
+const backgroundCaptureTabs = new Set();
 const regularCaptureTabs = new Set();
 const stopRequestedTabs = new Set();
 const SESSION_IDS_FOR_BACKGROUND = ['session1'];
@@ -131,7 +132,7 @@ async function send(tabId, message) {
 }
 
 async function keepBackgroundTabActive(tabId, force = false) {
-  if (!activeCaptureTabs.has(tabId)) return;
+  if (!activeCaptureTabs.has(tabId) || !backgroundCaptureTabs.has(tabId)) return;
   const now = Date.now();
   if (!force && now - (lastKeepAlive.get(tabId) || 0) < 1500) return;
   lastKeepAlive.set(tabId, now);
@@ -413,13 +414,15 @@ async function ensureOffscreen() {
 }
 
 async function captureViewport(tab, settings) {
-  if (settings.backgroundMode) {
-    await keepBackgroundTabActive(tab.id, true);
+  if (!settings.backgroundMode) {
+    const [active] = await chrome.tabs.query({ active: true, windowId: tab.windowId });
+    if (active?.id !== tab.id) throw new Error('Chạy nền đang tắt. Hãy giữ tab cần chụp ở phía trước.');
+  }
+  if (settings.backgroundMode || settings.highResolution) {
+    if (settings.backgroundMode) await keepBackgroundTabActive(tab.id, true);
     const result = await chrome.debugger.sendCommand({ tabId: tab.id }, 'Page.captureScreenshot', { format: 'png', fromSurface: true, captureBeyondViewport: false });
     return `data:image/png;base64,${result.data}`;
   }
-  const [active] = await chrome.tabs.query({ active: true, windowId: tab.windowId });
-  if (active?.id !== tab.id) throw new Error('Chạy nền đang tắt. Hãy giữ tab cần chụp ở phía trước.');
   return chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png' });
 }
 
@@ -651,22 +654,25 @@ async function runCapture(tab, suppliedSettings, sessionId = suppliedSettings?.s
     // Initialize the chosen mode explicitly, including bulk capture after a
     // regular capture or extension reload. Installed scripts guard duplicates.
     await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['capture-scroll.js', regular ? 'page-content.js' : google ? 'google-content.js' : 'content.js'] });
-    if (settings.backgroundMode) {
+    if (settings.backgroundMode || settings.highResolution) {
       try { await chrome.debugger.attach({ tabId: tab.id }, '1.3'); }
-      catch { throw new Error('Không thể bật chạy nền. Hãy đóng DevTools của tab Ads Manager rồi thử lại.'); }
+      catch { throw new Error('Không thể bật chế độ chụp. Hãy đóng DevTools của tab cần chụp rồi thử lại.'); }
       debuggerAttached = true;
       await chrome.tabs.update(tab.id, { autoDiscardable: false });
       try { await chrome.debugger.sendCommand({ tabId: tab.id }, 'Page.enable'); } catch {}
       try { await chrome.debugger.sendCommand({ tabId: tab.id }, 'Runtime.enable'); } catch {}
-      try { await chrome.debugger.sendCommand({ tabId: tab.id }, 'Page.setWebLifecycleState', { state: 'active' }); } catch {}
-      try { await chrome.debugger.sendCommand({ tabId: tab.id }, 'Emulation.setFocusEmulationEnabled', { enabled: true }); } catch {}
-      try { await chrome.debugger.sendCommand({ tabId: tab.id }, 'Emulation.setIdleOverride', { isUserActive: true, isScreenUnlocked: true }); } catch {}
-      try { await installBackgroundRenderShim(tab.id); } catch {}
+      if (settings.backgroundMode) {
+        backgroundCaptureTabs.add(tab.id);
+        try { await chrome.debugger.sendCommand({ tabId: tab.id }, 'Page.setWebLifecycleState', { state: 'active' }); } catch {}
+        try { await chrome.debugger.sendCommand({ tabId: tab.id }, 'Emulation.setFocusEmulationEnabled', { enabled: true }); } catch {}
+        try { await chrome.debugger.sendCommand({ tabId: tab.id }, 'Emulation.setIdleOverride', { isUserActive: true, isScreenUnlocked: true }); } catch {}
+        try { await installBackgroundRenderShim(tab.id); } catch {}
+      }
       // Hold the viewport steady when the Side Panel closes or another tab opens.
       const size = await chrome.debugger.sendCommand({ tabId: tab.id }, 'Runtime.evaluate', { expression: '({width:innerWidth,height:innerHeight,scale:devicePixelRatio})', returnByValue: true });
       const viewport = size.result?.value;
       if (viewport?.width > 0 && viewport?.height > 0) {
-        const imageScale = viewport.scale || 1;
+        const imageScale = settings.highResolution ? Math.max(2, viewport.scale || 1) : viewport.scale || 1;
         await chrome.debugger.sendCommand({ tabId: tab.id }, 'Emulation.setDeviceMetricsOverride', { width: viewport.width, height: viewport.height, deviceScaleFactor: imageScale, mobile: false });
         metricsOverridden = true;
       }
@@ -674,7 +680,7 @@ async function runCapture(tab, suppliedSettings, sessionId = suppliedSettings?.s
     await setStatus({ state: 'running', progress: Math.round(nextIndex / Math.max(1, jobs.length) * 95), message: 'Đang chuẩn bị trang…', result: capturePayload(tab, settings, captured), error: null, targetTabId: tab.id, stopRequested: false, resumeAvailable: false, cleanupPending: true }, sessionId);
     const initialized = await send(tab.id, { type: 'MAC_CAPTURE_INIT', settings });
     if (!initialized?.ok) throw new Error(initialized?.error || 'Tab không phản hồi khi khởi tạo. Hãy F5 tab cần chụp rồi bấm Bắt đầu lại.');
-    if (initialized.version !== '6.6.3') throw new Error('Tab còn dùng mã chụp cũ. Hãy F5 tab một lần sau khi tải lại extension.');
+    if (initialized.version !== '6.7.0') throw new Error('Tab còn dùng mã chụp cũ. Hãy F5 tab một lần sau khi tải lại extension.');
     if (!jobs.length) {
       const detected = await send(tab.id, { type: 'MAC_DETECT_LEVEL' });
       if (!detected?.level) throw new Error('Không xác định được cấp Campaign, Ad set hay Ad hiện tại.');
@@ -763,13 +769,16 @@ async function runCapture(tab, suppliedSettings, sessionId = suppliedSettings?.s
     try { await send(tab.id, { type: 'MAC_RESTORE' }); } catch {}
     if (debuggerAttached) {
       if (metricsOverridden) try { await chrome.debugger.sendCommand({ tabId: tab.id }, 'Emulation.clearDeviceMetricsOverride'); } catch {}
-      try { await removeBackgroundRenderShim(tab.id); } catch {}
-      try { await chrome.debugger.sendCommand({ tabId: tab.id }, 'Emulation.setFocusEmulationEnabled', { enabled: false }); } catch {}
-      try { await chrome.debugger.sendCommand({ tabId: tab.id }, 'Emulation.clearIdleOverride'); } catch {}
+      if (settings.backgroundMode) {
+        try { await removeBackgroundRenderShim(tab.id); } catch {}
+        try { await chrome.debugger.sendCommand({ tabId: tab.id }, 'Emulation.setFocusEmulationEnabled', { enabled: false }); } catch {}
+        try { await chrome.debugger.sendCommand({ tabId: tab.id }, 'Emulation.clearIdleOverride'); } catch {}
+      }
       try { await chrome.debugger.detach({ tabId: tab.id }); } catch {}
     }
     try { await chrome.tabs.update(tab.id, { autoDiscardable: tab.autoDiscardable !== false }); } catch {}
     activeCaptureTabs.delete(tab.id);
+    backgroundCaptureTabs.delete(tab.id);
     regularCaptureTabs.delete(tab.id);
     stopRequestedTabs.delete(tab.id);
     activeSessions.delete(sessionId);

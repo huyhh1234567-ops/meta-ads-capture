@@ -1,7 +1,7 @@
 const ids = [
   'filenamePrefix','folderId','webhookUrl','webhookToken','makePublic','rowSelector','nameSelector',
   'scrollSelector','previewSelector','currentNameSelector','adPattern','settleMs','maxLoadWaitMs','overlapRatio',
-  'maxShots','highlightAdvantage','highlightTA','highlightBudget','hideChrome','exportJson','backgroundMode','autoHidePanel','compactLinks','platform','googlePages','googleLevel','captureMode','capturePace'
+  'maxShots','highResolution','highlightAdvantage','highlightTA','highlightBudget','hideChrome','exportJson','backgroundMode','autoHidePanel','compactLinks','platform','googlePages','googleLevel','captureMode','capturePace'
 ];
 const $ = (id) => document.getElementById(id);
 let timer = null;

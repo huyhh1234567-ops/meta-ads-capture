@@ -1,5 +1,7 @@
 # ADR-001: Preserve native pixels and checkpoint successful output
 
+Resolution decision superseded on 2026-10-23 by the user's request for sharper output: 6.7.0 renders at a minimum 2x DPR by default with an opt-out to native density. CSS viewport size, browser zoom, source-pixel stitching and checkpoint behavior are preserved. This renders the page at higher density before capture; it does not upscale a captured bitmap. Metrics are cleared after completion or failure.
+
 ## Status
 
 Accepted, 2026-10-12. Implements the approved capture-recovery/entity-navigation/region-highlights specs.

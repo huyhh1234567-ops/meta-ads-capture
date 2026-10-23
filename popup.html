@@ -55,7 +55,7 @@
         <div class="structure-actions"><button id="resetTree" type="button" class="mini-button">Khôi phục theo file</button><span id="treeSummary"></span></div>
       </div>
       <p class="output-note">Kết quả được giữ trong khung Copy; tool không tự tải file TXT.</p>
-      <label class="check preview-link-option advantage-option"><input type="checkbox" id="highlightAdvantage"><span><strong>Lưu ý Advantage+</strong><small>Thêm khung đỏ quanh mục Advantage+ creative trong ảnh Ad sau khi ghép.</small></span></label>
+      <label class="check preview-link-option advantage-option"><input type="checkbox" id="highlightAdvantage"><span><strong>Khoanh Advantage+ của Ad</strong><small>Khoanh Advantage+ creative / creative enhancements ở cấp Ad. Không khoanh Advantage+ Audience hoặc Placements của Ad set.</small></span></label>
       <label class="check preview-link-option advantage-option"><input type="checkbox" id="highlightTA"><span><strong>Khoanh TA / Đối tượng</strong><small>Khoanh riêng phần Audience / Targeting trong ảnh Ad set.</small></span></label>
       <label class="check preview-link-option advantage-option"><input type="checkbox" id="highlightBudget"><span><strong>Khoanh ngân sách</strong><small>Khoanh phần Budget trong ảnh Campaign hoặc Ad set; không đổi cài đặt quảng cáo.</small></span></label>
     </section>
@@ -74,7 +74,7 @@
     <details class="advanced"><summary>Cài đặt nâng cao</summary><div class="advanced-grid">
       <label>Tên file<input id="filenamePrefix" value="MetaAds"></label>
       <label>Tốc độ chụp<select id="capturePace"><option value="fast">Nhanh</option><option value="steady">Chờ kỹ hơn</option></select><small>Cuộn mượt; chỉ chụp khi nội dung đã ổn định. Chọn chờ kỹ hơn nếu mạng chậm.</small></label>
-      <p class="output-note">Giữ nguyên zoom và mật độ điểm ảnh của tab, không tự phóng to khi chụp.</p>
+      <label class="check"><input type="checkbox" id="highResolution" checked><span>Ảnh nét hơn (tối thiểu 2×)<small>Render PNG nhiều pixel hơn, giữ nguyên bố cục và zoom. Bỏ tick để dùng mật độ pixel gốc.</small></span></label>
       <label>Chờ tối thiểu khi chọn “Chờ kỹ hơn”<input id="settleMs" type="number" min="1000" max="5000" step="100" value="1800"><small>Meta: chế độ Nhanh chờ tối thiểu 0,6 giây, và tự chờ thêm nếu nội dung còn thay đổi.</small></label>
       <label>Chờ Meta tải tối đa<input id="maxLoadWaitMs" type="number" min="10000" max="60000" step="1000" value="30000"><small>Khuyến nghị 30.000 ms để tab nền tải đủ nội dung.</small></label>
       <label>Độ chồng giữa các đoạn<input id="overlapRatio" type="number" min="0.1" max="0.5" step="0.05" value="0.25"><small>0,25 nghĩa là hai ảnh chồng nhau 25%, tránh mất nội dung.</small></label>

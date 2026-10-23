@@ -30,6 +30,7 @@ y: scrollTop + top - captureRect.top
 
 - Checkbox Advantage+ đang có giữ lựa chọn người dùng; TA/Budget là checkbox mới, mặc định tắt.
 - Advantage+ chỉ bao creative enhancements, Essential enhancements, Try it out và creative translation khi thuộc khối đó.
+- Chỉ khoanh ở cấp Ad và khi DOM còn tiêu đề Ad name/Tên quảng cáo (kể cả nằm ngoài viewport sau cuộn). Không khoanh Advantage+ Audience/Placements của Ad set. Chuẩn hóa ký tự vô hình trong nhãn Meta trước khi nhận diện.
 - Không bao Primary text, Headline, Description, CTA, Creative testing hoặc toàn bộ card Ad creative/ảnh.
 - Nhiều khối Advantage+: chỉ khoanh khối đầu tiên theo thứ tự từ trên xuống. Không suy đoán thành khung lớn nếu ranh giới không chắc.
 - TA khoanh vùng Audience/Targeting của Ad set; không khoanh Estimated audience size bên phải hay preview quảng cáo.

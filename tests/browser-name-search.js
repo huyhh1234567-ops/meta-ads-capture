@@ -21,6 +21,7 @@ const source = fs.readFileSync(path.resolve(__dirname, '../content.js'), 'utf8')
       <input placeholder="Search" id="settings-search"></section>`);
     await page.evaluate(() => {
       window.queries = []; window.clicks = []; window.searchInputs = 0;
+      window.readyDelays = []; window.resultsReadyAt = 0;
       window.screenName = ''; window.screenId = ''; window.failLoading = false;
       window.renderDelay = 650; window.hideLoading = false;
       const search = document.querySelector('nav input');
@@ -42,7 +43,7 @@ const source = fs.readFileSync(path.resolve(__dirname, '../content.js'), 'utf8')
           row.setAttribute('role', 'rowheader'); row.setAttribute('aria-label', item.level || 'Ad');
           row.id = `ads_campaign_structure_item_${item.id}`;
           row.textContent = item.name;
-          row.onclick = () => { window.clicks.push(item.id); window.screenId = item.id; window.screenName = item.name; };
+          row.onclick = () => { window.readyDelays.push(performance.now() - window.resultsReadyAt); window.clicks.push(item.id); window.screenId = item.id; window.screenName = item.name; };
           rows.append(row);
         }
       };
@@ -57,11 +58,12 @@ const source = fs.readFileSync(path.resolve(__dirname, '../content.js'), 'utf8')
         const query = inputQuery, request = ++revision;
         window.queries.push(query);
         rows.setAttribute('aria-busy', String(!window.hideLoading));
-        if (window.hideLoading) window.renderRows([{ name: '21New Launch 264 - drop 2_Female_FB_21/10_31/10_$32.4', id: '666666666666666', level: 'Ad set' }]);
+        if (window.hideLoading && !window.keepStaleRows) window.renderRows([{ name: '21New Launch 264 - drop 2_Female_FB_21/10_31/10_$32.4', id: '666666666666666', level: 'Ad set' }]);
         if (window.failLoading) return;
         setTimeout(() => {
           if (request !== revision) return;
           window.renderRows(ads.filter((ad) => ad.name.includes(query)));
+          window.resultsReadyAt = performance.now();
           rows.setAttribute('aria-busy', 'false');
         }, window.renderDelay);
       });
@@ -94,6 +96,11 @@ const source = fs.readFileSync(path.resolve(__dirname, '../content.js'), 'utf8')
       searchInputs: 2, setting: 'Original ad setting', query: 'Second exact Ad' });
     console.log('PASS direct sibling Ad searches use their own IDs with no parent rows or selected ancestors');
 
+    await page.evaluate(async () => { await searchTest.selectNamedEntity('First exact Ad', 'ad'); });
+    const readyDelays = await page.evaluate(() => readyDelays);
+    console.log(`Ready Search to click (ID, ID, unique name): ${readyDelays.map(Math.round).join(', ')} ms`);
+    assert.ok(readyDelays.every((ms) => ms < 500), 'Already loaded results must be clicked within 500 ms, without repeated stability waits');
+
     await page.evaluate(() => {
       const unrelated = document.createElement('div');
       unrelated.id = 'unrelated-pane';
@@ -109,6 +116,13 @@ const source = fs.readFileSync(path.resolve(__dirname, '../content.js'), 'utf8')
     });
     await page.locator('#unrelated-pane').evaluate((node) => node.remove());
     console.log('PASS unrelated left-side scroller and loader cannot block ready Search results');
+
+    await page.evaluate(async () => {
+      window.hideLoading = true; window.keepStaleRows = true;
+      await searchTest.selectNamedEntity('First exact Ad', 'ad', {}, 'a:111111111111111');
+      window.keepStaleRows = false; window.hideLoading = false;
+    });
+    console.log('PASS stale same-level results without a loading marker wait for the new target');
 
     await page.evaluate(async () => {
       window.hideLoading = true; window.renderDelay = 2600;

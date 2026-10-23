@@ -212,15 +212,17 @@
 
   function advantageHighlight(captureRect, scrollTop) {
     if (!state.settings.highlightAdvantage || state.currentLevel !== 'ad') return null;
-    const textOf = (node) => String(node.innerText || node.textContent || '').replace(/\s+/g, ' ').trim();
+    const textOf = (node) => String(node.innerText || node.textContent || '').replace(/[\u200b-\u200d\ufeff]/g, '').replace(/\s+/g, ' ').trim();
     const startPattern = /^(?:advantage\+\s*(?:creative(?:\s+enhancements)?|nội dung)|nội dung(?: quảng cáo)?\s+advantage\+)(?:\s*\(\s*\d+\s*\/\s*\d+\s*\))?(?:\s*[ⓘℹ✦✨])?$/i;
-    const nodes = [...document.querySelectorAll('h1, h2, h3, h4, [role="heading"], strong, span, div')]
+    const nodes = [...document.querySelectorAll('h1, h2, h3, h4, label, [role="heading"], strong, span, div')]
       .filter((node) => {
         const rect = node.getBoundingClientRect();
         const style = getComputedStyle(node);
         return rect.width > 2 && rect.height > 2 && style.display !== 'none' && style.visibility !== 'hidden'
           && node.children.length < 3;
       });
+    // The name heading may be above the viewport after scrolling to creative.
+    if (!nodes.some((node) => /^(?:ad name|tên quảng cáo)$/i.test(textOf(node)))) return null;
     const heading = nodes.filter((node) => startPattern.test(textOf(node)))
       .filter((node) => {
         const rect = node.getBoundingClientRect();
@@ -595,7 +597,6 @@
         input.dispatchEvent(new KeyboardEvent(type, { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, cancelable: true }));
       }
     } finally { state.allowedSearch = null; }
-    await sleep(500);
     return resetEntityListToTop(level, target);
   }
 
@@ -620,7 +621,7 @@
           try { scroller.dispatchEvent(new Event('scroll', { bubbles: true })); } catch {}
         }
       }
-      await sleep(250);
+      await sleep(searchQuery === null ? 250 : 100);
       if (findLeftScroller([], scope) !== scroller) { stable = 0; previous = ''; lastStatus = 'khung danh sách đang thay đổi'; continue; }
       // Other left-side panels can keep loading after Search has finished.
       const root = searchQuery === null ? (scroller || document) : scope;
@@ -638,7 +639,8 @@
       const ready = rows.length || searchQuery !== null || (!scroller && detectCurrentLevel());
       stable = (!scroller || Math.abs(scroller.scrollTop - desired) <= 1) && ready && !loading && signatureWithPosition === previous ? stable + 1 : 0;
       const hasResults = searchLevel
-        ? rows.some((row) => LEVEL_CONFIG[searchLevel].rowLabel.test(row.getAttribute('aria-label') || row.getAttribute('data-level') || ''))
+        ? rows.some((row) => LEVEL_CONFIG[searchLevel].rowLabel.test(row.getAttribute('aria-label') || row.getAttribute('data-level') || '')
+          && exactEntityMatch({ variants: entityNameVariants(row, searchLevel) }, searchQuery))
         : rows.length;
       emptyResult = searchQuery !== null && !hasResults && !loading && stable >= 2;
       lastStatus = `${rows.length} hàng, ${loading ? 'còn loading trong cây' : 'không loading'}, ${stable} mẫu ổn định`;
@@ -1215,11 +1217,8 @@
         if (settled !== grid) continue;
       }
       if (grid.scrollTop + grid.clientHeight >= grid.scrollHeight - 2) {
-        await settleEntityListAt(grid.scrollTop, target);
-        const current = entityGrid(entityItems(level));
-        if (!current || current !== grid || current.scrollTop + current.clientHeight < current.scrollHeight - 2) continue;
-        // One final pass over rows rendered after reaching the bottom.
-        if (!reachedBottom) { reachedBottom = true; continue; }
+        // Search and each scroll already settled this viewport before scanning.
+        reachedBottom = true;
         break;
       }
       reachedBottom = false;
@@ -1230,7 +1229,9 @@
     if (!reachedBottom) throw new Error('Danh sách quá dài hoặc đang thay đổi; tool chưa quét hết nên không thể kết luận không tìm thấy tên.');
     if (found.size === 1) {
       const candidate = [...found.values()][0];
-      const grid = await settleEntityListAt(candidate.top, target);
+      const currentGrid = entityGrid(entityItems(level));
+      const grid = Math.abs((currentGrid?.scrollTop || 0) - candidate.top) <= 1
+        ? currentGrid : await settleEntityListAt(candidate.top, target);
       const match = entityItems(level).find((item) => exactEntityMatch(item, target)
         && candidateKey(item, grid) === candidate.key);
       if (!match) throw new Error('Danh sách đã thay đổi sau khi quét; tool dừng để tránh chọn nhầm.');
@@ -1300,7 +1301,7 @@
         state.selectedPath = {};
         state.selectedIds = {};
         if (!findEntitySearchInput()) throw new Error('Hãy mở ô Search trong cây Campaign/Ad set/Ad bên trái trước khi bắt đầu.');
-        respond({ ok: true, version: '6.6.3' });
+        respond({ ok: true, version: '6.7.0' });
       } else if (message.type === 'MAC_DETECT_LEVEL') {
         respond({ ok: true, level: detectCurrentLevel() });
       } else if (message.type === 'MAC_SELECT_TARGET_ENTITY') {

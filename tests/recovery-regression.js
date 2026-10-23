@@ -20,7 +20,7 @@ function harness(options = {}, storage = {}) {
     viewportWidth: 800, viewportHeight: 600, rect: { left: 0, top: 0, width: 800, height: 400 }, atBottom: true });
   const context = {
     URL, Date, setTimeout, clearTimeout, crypto: require('node:crypto').webcrypto, TextEncoder, Uint8Array,
-    DEFAULTS: {}, regularCaptureTabs: new Set(), activeCaptureTabs: new Set(),
+    DEFAULTS: {}, regularCaptureTabs: new Set(), activeCaptureTabs: new Set(), backgroundCaptureTabs: new Set(),
     stopRequestedTabs: new Set(), activeSessions: new Map(), lastKeepAlive: new Map(),
     isGoogleAdsUrl: () => false, wait: async () => {}, safe: (value) => String(value || ''),
     setStatus: async (patch) => {
@@ -194,15 +194,34 @@ const tests = [
     assert.equal(run.storage.captureCheckpoint.nextIndex, 1);
     assert.ok(!run.statuses.some((status) => status.state === 'error'));
   }],
-  ['highResolution preserves native pixel density and never changes browser zoom', async () => {
-    for (const dpr of [1, 1.25, 2]) {
+  ['highResolution renders at least 2x with fixed CSS size and restores metrics', async () => {
+    for (const backgroundMode of [false, true]) for (const dpr of [.75, 1, 1.25, 2, 3]) {
       const run = harness({ dpr });
-      await run.run(1, { ...settings, targetCampaigns: ['First'], backgroundMode: true, highResolution: true });
+      await run.run(1, { ...settings, targetCampaigns: ['First'], backgroundMode, highResolution: true });
       assert.equal(run.final().state, 'done');
       const overrides = run.commands.filter((entry) => entry.command === 'Emulation.setDeviceMetricsOverride');
-      for (const entry of overrides) assert.equal(entry.params.deviceScaleFactor, dpr, 'Viewport stabilization must retain native DPR');
+      assert.equal(overrides.length, 1);
+      assert.deepEqual(copy(overrides[0].params), { width: 800, height: 600, deviceScaleFactor: Math.max(2, dpr), mobile: false });
+      assert.ok(run.commands.some((entry) => entry.command === 'Emulation.clearDeviceMetricsOverride'));
       assert.equal(run.zooms.length, 0, 'Capture must never call setZoom');
     }
+    const native = harness({ dpr: .75 });
+    await native.run(1, { ...settings, targetCampaigns: ['First'], backgroundMode: true, highResolution: false });
+    assert.equal(native.commands.find((entry) => entry.command === 'Emulation.setDeviceMetricsOverride').params.deviceScaleFactor, .75);
+    const failed = harness({ captureFailure: () => true });
+    await failed.run(1, { ...settings, targetCampaigns: ['First'], highResolution: true });
+    assert.equal(failed.final().state, 'error');
+    assert.ok(failed.commands.some((entry) => entry.command === 'Emulation.clearDeviceMetricsOverride'));
+  }],
+  ['foreground high-resolution capture never enables background focus/idle emulation', async () => {
+    const run = harness();
+    vm.runInNewContext(source.slice(source.indexOf('async function keepBackgroundTabActive('), source.indexOf('async function installBackgroundRenderShim(')), run.context);
+    run.context.activeCaptureTabs.add(1);
+    await run.context.keepBackgroundTabActive(1, true);
+    assert.equal(run.commands.length, 0);
+    run.context.backgroundCaptureTabs.add(1);
+    await run.context.keepBackgroundTabActive(1, true);
+    assert.equal(run.commands.length, 3);
   }],
   ['checkpoint never stores an upload token or image bytes', async () => {
     const run = harness({ selectFailure: (name) => name === 'Second' });
@@ -302,7 +321,8 @@ const tests = [
   }]
 ];
 
-(async () => {
+module.exports = { harness, settings };
+if (require.main === module) (async () => {
   let failed = 0;
   for (const [name, test] of tests) {
     try { await test(); console.log(`PASS ${name}`); }

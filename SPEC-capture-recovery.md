@@ -29,6 +29,7 @@ if (await shouldStop(tab.id, sessionId)) throw new Error('__MAC_STOPPED__');
 
 - Giữ mức zoom và bố cục hiện tại; không tự zoom trang lên/xuống mỗi lần chụp.
 - Không nhầm độ phân giải ảnh với zoom trang. Không phóng ảnh bitmap giả làm ảnh nét; giữ pixel nguồn.
+- Từ 6.7.0, tùy chọn Ảnh nét hơn mặc định bật: render ở DPR tối thiểu 2× trước khi chụp PNG, giữ kích thước CSS và zoom, không upscale ảnh đã chụp. Bỏ tick dùng DPR gốc. Dọn override sau thành công, dừng hoặc lỗi; áp dụng cả chạy nền và giữ tab trước.
 - Có thể giữ kích thước viewport để chạy nền nếu cần, nhưng không thay đổi mức zoom người dùng.
 - Lưu danh sách việc, ngữ cảnh ID/cha, kết quả ảnh/preview đã có và mục đang xử lý sau mỗi phần thành công.
 - Khi lỗi tìm/chuẩn bị/chụp: cập nhật ngay kết quả đã có ở ô Copy; thử lại đúng mục, tối đa 3 lượt tính cả lượt đầu.

@@ -1,4 +1,15 @@
-# Meta Ads Capture & Link Mapper 6.6.3
+# Meta Ads Capture & Link Mapper 6.7.0
+
+## Bản 6.7.0 — giảm chờ, ảnh 2× và khoanh Advantage+ của Ad, 23/10/2026
+
+- Search bỏ chờ cố định 500 ms sau Enter và các lượt chờ lại trên viewport đã ổn định. Poll 100 ms, vẫn cần ba mẫu ổn định và đúng tên; hàng cũ cùng cấp chưa phải kết quả của tên mới. Chrome mô phỏng đo từ lúc hàng tải xong đến click: khoảng 0,6–1,4 giây trước sửa, 0,2–0,3 giây sau sửa. Đây không phải thời gian tải Meta thực tế.
+- **Ảnh nét hơn (tối thiểu 2×)** mặc định bật trong Cài đặt nâng cao: render mật độ tối thiểu 2 pixel/CSS pixel trước khi chụp PNG, giữ bố cục và zoom. Bỏ tick dùng DPR gốc. Áp dụng cả bật/tắt Chạy nền, dọn override sau hoàn tất/lỗi; cần đóng DevTools của tab chụp. Không phóng bitmap đã chụp.
+- **Khoanh Advantage+ của Ad** chỉ khoanh creative/enhancements và các phần thuộc khối đó. Kiểm tra cả cấp Ad và tiêu đề Ad name trên DOM; không khoanh Audience/Placements của Ad set. Nhận ký tự vô hình trong tiêu đề Meta thực tế.
+- Trang xem ảnh Apps Script bỏ nút **Mở trong Drive**, giữ hai chế độ xem ảnh. Nếu tự cài, cập nhật `apps-script/Code.gs` và Deploy New version trên deployment đang dùng; giữ nguyên mã bảo vệ và URL `/exec` để link cũ tiếp tục hoạt động.
+
+Cập nhật extension: Reload → F5 Meta → **Tiếp tục từ mục chưa xong**. Checkpoint giữ nguyên; ảnh đã hoàn tất không tự được chụp lại ở độ nét mới. Muốn tạo lại ảnh cũ ở 2×, bắt đầu lượt mới.
+
+Kiểm chứng: hồi quy và Chrome riêng kiểm tra Search, PNG thật 1600×1200 từ viewport CSS 800×600 khởi đầu DPR 0,75 ở cả hai chế độ, khôi phục mật độ, ghép ảnh, tùy chọn UI, Ad/Ad set và trang xem có chữ ký. Chưa chạy lại toàn bộ chụp/upload Meta bằng extension 6.7.0 trên tài khoản thật.
 
 ## Bản 6.6.3 — chờ đúng cây kết quả Search, 22/10/2026
 

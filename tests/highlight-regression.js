@@ -3,15 +3,30 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const path = require('node:path');
 const source = fs.readFileSync(path.join(__dirname, '../content.js'), 'utf8');
-let nodes = [];
+let nodes = [], screenLevel = 'Ad';
 const box = (top, height, width = 360, left = 300) => ({ top, bottom: top + height, height, width, left, right: left + width });
 const card = (text, top, height) => ({ textContent: text, parentElement: null, getBoundingClientRect: () => box(top, height) });
 const heading = (text, top, parent) => ({ textContent: text, children: [], parentElement: parent, getBoundingClientRect: () => box(top, 20, 300, 310) });
 const context = { state: { settings: { highlightAdvantage: true, highlightTA: true, highlightBudget: true }, currentLevel: 'ad' }, innerWidth: 1200,
-  document: { body: {}, querySelectorAll: () => nodes }, getComputedStyle: () => ({ display: 'block', visibility: 'visible' }) };
+  document: { body: {}, querySelectorAll: () => [heading(`${screenLevel} name`, -700, null), ...nodes] }, getComputedStyle: () => ({ display: 'block', visibility: 'visible' }) };
 vm.runInNewContext(source.slice(source.indexOf('  function advantageHighlight('), source.indexOf('  function previewSnapshot(')), context);
 const rect = { left: 240, top: 100, width: 800, height: 700 };
 const cases = [
+  ['Advantage only marks Ad creative, even with stale Ad state on an Ad set screen', () => {
+    const outer = card('Advantage+ creative enhancements Essential enhancements Try it out', 500, 250);
+    nodes = [heading('Advantage+ audience', 200, outer), heading('Advantage+ placements', 300, outer), heading('Advantage+ creative enhancements (0/5)', 510, outer)];
+    context.state.currentLevel = 'ad'; screenLevel = 'Ad set';
+    assert.equal(context.advantageHighlight(rect, 0), null);
+    screenLevel = 'Ad';
+    assert.ok(context.advantageHighlight(rect, 0));
+    nodes[2].textContent += '\u200b';
+    assert.ok(context.advantageHighlight(rect, 0), 'Real Meta heading has a zero-width marker');
+    context.state.currentLevel = 'adset';
+    assert.equal(context.advantageHighlight(rect, 0), null);
+    context.state.currentLevel = 'ad';
+    nodes = nodes.slice(0, 2);
+    assert.equal(context.advantageHighlight(rect, 0), null);
+  }],
   ['Advantage never outlines an unbounded ancestor beginning with its title', () => {
     const outer = card('Advantage+ creative enhancements Essential enhancements Try it out Tracking Budget', 500, 4000);
     nodes = [heading('Advantage+ creative enhancements (0/4)', 510, outer)];

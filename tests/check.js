@@ -160,7 +160,7 @@ async function check() {
   left.scrollTop = 1800;
   const initialized = await new Promise((resolve) => metaMessage({ type: 'MAC_CAPTURE_INIT', settings: {} }, {}, resolve));
   assert.equal(initialized.ok, true);
-  assert.equal(initialized.version, '6.6.3');
+  assert.equal(initialized.version, '6.7.0');
   assert.equal(left.scrollTop, 1800, 'Start must not scan or reset the unfiltered tree');
 
   const normalQuery = context.document.querySelectorAll, normalRows = left.querySelectorAll;
@@ -450,6 +450,10 @@ async function check() {
   assert.equal(importedTree[0].children[0].id, '222222222222222');
   assert.equal(importedTree[0].children[0].children[0].name, 'Ad_full_name_HCM,HN');
 
+  const highlightQuery = context.document.querySelectorAll;
+  const adScreenHeading = { textContent: 'Ad name', children: [],
+    getBoundingClientRect: () => ({ left: 310, right: 500, top: -700, width: 190, height: 20 }) };
+  context.document.querySelectorAll = () => [adScreenHeading, ...headings];
   const makeHeading = (top) => {
     const card = { textContent: 'Advantage+ creative enhancements Turned off Try it out', parentElement: null,
       getBoundingClientRect: () => ({ left: 300, right: 660, top, width: 360, height: 260 }) };
@@ -508,6 +512,7 @@ async function check() {
   api.state.settings.highlightAdvantage = true;
 
   // Verify the last tile is clipped rather than scaled, which distorted images.
+  context.document.querySelectorAll = highlightQuery;
   const draws = [], marks = [];
   const canvas = { getContext: () => ({ fillRect() {}, drawImage: (...args) => draws.push(args), save() {}, restore() {}, strokeRect: (...args) => marks.push(args) }), toDataURL: () => 'data:image/png;base64,test' };
   const stitchContext = { document: { createElement: () => canvas },
@@ -669,13 +674,13 @@ async function check() {
     DEFAULTS: { backgroundMode: false, uploadDrive: true, filenamePrefix: 'Capture' },
     isGoogleAdsUrl: () => false,
     flattenCaptureTree: (tree) => { assert.equal(tree.length, 0); return []; },
-    regularCaptureTabs: new Set(), activeCaptureTabs: new Set([1]), stopRequestedTabs: new Set(), activeSessions: new Map(), lastKeepAlive: new Map(),
+    regularCaptureTabs: new Set(), activeCaptureTabs: new Set([1]), backgroundCaptureTabs: new Set(), stopRequestedTabs: new Set(), activeSessions: new Map(), lastKeepAlive: new Map(),
     URL, crypto: require('node:crypto').webcrypto, TextEncoder, Uint8Array,
     chrome: { storage: { local: { get: async () => ({}), set: async () => {} } }, scripting: { executeScript: async ({ files }) => installedFiles.push(...files) }, tabs: { update: async () => {} } },
     setStatus: async (status) => statuses.push(status),
     send: async (_id, message) => {
       sent.push(message.type);
-      if (message.type === 'MAC_CAPTURE_INIT') return { ok: true, version: '6.6.3' };
+      if (message.type === 'MAC_CAPTURE_INIT') return { ok: true, version: '6.7.0' };
       return { ok: true, snapshot: { ...snap, name: 'Current page' } };
     },
     shouldStop: async () => false, keepBackgroundTabActive: async () => {},

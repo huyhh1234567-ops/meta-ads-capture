@@ -47,6 +47,8 @@ const server = http.createServer((request, response) => {
     await page.locator('#resume').waitFor({ state: 'visible' });
     assert.equal(await page.locator('#highlightTA').isChecked(), false);
     assert.equal(await page.locator('#highlightBudget').isChecked(), false);
+    assert.equal(await page.locator('#highResolution').isChecked(), true);
+    assert.match(await page.locator('label:has(#highlightAdvantage)').innerText(), /của Ad[\s\S]*Không khoanh[\s\S]*Ad set/);
     assert.ok((await page.locator('.session-result-text').inputValue()).includes('https://images.example.test/first'));
     await page.locator('#highlightTA').check();
     await page.locator('#highlightBudget').check();
@@ -60,10 +62,14 @@ const server = http.createServer((request, response) => {
     assert.equal(resumed.resumeCapture, true);
     assert.equal(resumed.tabId, 7);
     assert.equal(resumed.highlightTA, true); assert.equal(resumed.highlightBudget, true);
+    assert.equal(resumed.highResolution, true);
     await page.locator('#resume').waitFor({ state: 'hidden' });
+    await page.locator('.advanced > summary').click();
+    await page.locator('#highResolution').uncheck();
     await page.locator('#capture').click();
     await page.waitForFunction(() => window.__starts.length === 2);
     assert.equal(await page.evaluate(() => window.__starts[1].resumeCapture), false);
+    assert.equal(await page.evaluate(() => window.__starts[1].highResolution), false);
     for (const width of [360, 420]) {
       await page.setViewportSize({ width, height: 1000 });
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `No horizontal overflow at ${width}px`);

@@ -13,7 +13,7 @@
 
 Sau khi dán code mới và lưu, chọn **Deploy > Manage deployments > Edit (biểu tượng bút chì) > Version: New version > Deploy**. Không cần tạo URL khác; URL `/exec` cũ vẫn dùng được.
 
-Code mới trả về một link xem ảnh riêng: ảnh tự vừa chiều ngang trình duyệt và cuộn dọc tự nhiên. Mỗi link có thêm chữ ký `sig` được tạo từ File ID và `UPLOAD_TOKEN`; sửa hoặc thay File ID sẽ bị từ chối. File gốc vẫn nằm trong đúng folder Drive, và nút **Mở trong Drive** luôn có trên đầu trang xem.
+Code mới trả về một link xem ảnh riêng: ảnh tự vừa chiều ngang trình duyệt và cuộn dọc tự nhiên. Mỗi link có thêm chữ ký `sig` được tạo từ File ID và `UPLOAD_TOKEN`; sửa hoặc thay File ID sẽ bị từ chối. File gốc vẫn nằm trong đúng folder Drive. Từ bản 6.7.0, trang xem chỉ giữ **Vừa chiều ngang** và **Kích thước gốc**, đã bỏ nút **Mở trong Drive**. Cần Deploy New version của deployment đang dùng để cập nhật cả link ảnh cũ; giữ nguyên `UPLOAD_TOKEN` và URL `/exec`.
 
 Sau khi nâng lên 5.4, các link ảnh cũ không có `sig` sẽ không còn mở được. Hãy tạo link mới bằng một phiên chụp mới. Không đổi `UPLOAD_TOKEN` sau khi đã tạo link, vì chữ ký của các link trước đó phụ thuộc vào mã này.
 

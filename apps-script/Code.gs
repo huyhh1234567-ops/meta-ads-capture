@@ -100,7 +100,6 @@ function imageViewer_(fileId, signature) {
     // người nhận link xem được mà không cần đăng nhập Drive.
     const imageUrl = 'data:' + mimeType + ';base64,' +
       Utilities.base64Encode(file.getBlob().getBytes());
-    const driveLink = escapeHtml_(file.getUrl());
     const html = '<!doctype html><html lang="vi"><head><meta charset="utf-8">' +
       '<meta name="viewport" content="width=device-width,initial-scale=1">' +
       '<title>' + name + '</title><style>' +
@@ -111,7 +110,7 @@ function imageViewer_(fileId, signature) {
       'button.active{background:#1769e8;border-color:#1769e8}.stage{width:100%;overflow:auto;background:#e9eef5}' +
       '.image{display:block;height:auto;background:#fff;margin:0 auto}.image.fit{width:100%;max-width:none}.image.original{width:auto;max-width:none}' +
       '</style></head><body><div class="bar"><span class="name">' + name + '</span>' +
-      '<span class="actions"><button id="fit" class="active">Vừa chiều ngang</button><button id="original">Kích thước gốc</button><a href="' + driveLink + '" target="_blank" rel="noopener">Mở trong Drive</a></span></div>' +
+      '<span class="actions"><button id="fit" class="active">Vừa chiều ngang</button><button id="original">Kích thước gốc</button></span></div>' +
       '<div class="stage"><img id="image" class="image fit" src="' + imageUrl + '" alt="' + name + '"></div>' +
       '<script>(function(){var image=document.getElementById("image"),fit=document.getElementById("fit"),original=document.getElementById("original");' +
       'function mode(value){image.className="image "+value;fit.classList.toggle("active",value==="fit");original.classList.toggle("active",value==="original");window.scrollTo(0,0)}' +
