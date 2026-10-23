@@ -1,4 +1,4 @@
-param([string]$GoogleExecUrl = '', [string]$OutputDirectory = '')
+﻿param([string]$GoogleExecUrl = '', [string]$OutputDirectory = '')
 $ErrorActionPreference = 'Stop'
 if ($GoogleExecUrl -notmatch '^https://script\.google\.com/macros/s/[A-Za-z0-9_-]+/exec$') {
   throw 'Cần URL /exec của deployment chạy bằng User accessing the web app. Không tạo gói khi thiếu deployment.'

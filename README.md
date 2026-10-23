@@ -1,10 +1,10 @@
-# Meta Ads Capture & Link Mapper 6.7.0
+# Meta Ads Capture & Link Mapper 6.8.0
 
-## Đang chuẩn bị gói Google Drive cá nhân
+## Bản 6.8.0 — gói Google Drive cá nhân (chờ kiểm chứng Google)
 
 Mã nguồn bổ sung **Đăng nhập Google** để người nhận chỉ cần tài khoản Google và link thư mục của mình. Cần tạo deployment mới chạy bằng **User accessing the web app** rồi điền URL công khai vào `package-config.js`; file này không chứa OAuth token hoặc mã bảo vệ riêng. Deployment cũ chạy bằng Me được giữ để link ảnh cũ hoạt động.
 
-Chưa phát hành gói đăng nhập Google: đang chờ xác minh đăng nhập của chủ project để cấu hình và kiểm tra deployment thật. Hướng dẫn cho người đóng gói ở `apps-script/README.md`, hướng dẫn người nhận ở `PACKAGE-README.md`, lệnh đóng gói ở `scripts/package-google-drive.ps1`.
+Đã tạo deployment riêng, phiên bản Apps Script 8 ngày 23/10/2026, chạy bằng tài khoản người truy cập và cho phép các tài khoản Google. URL công khai đã điền trong `package-config.js`; deployment cũ vẫn giữ nguyên. Chưa phát hành gói đăng nhập Google: đang chờ người dùng hoàn tất màn xác minh/cấp quyền Google để kiểm tra kết nối thật. Hướng dẫn cho người đóng gói ở `apps-script/README.md`, hướng dẫn người nhận ở `PACKAGE-README.md`, lệnh đóng gói ở `scripts/package-google-drive.ps1`.
 
 ## Bản 6.7.0 — giảm chờ, ảnh 2× và khoanh Advantage+ của Ad, 23/10/2026
 

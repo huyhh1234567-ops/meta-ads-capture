@@ -30,6 +30,11 @@ vm.runInContext(fs.readFileSync(path.join(__dirname, '../google-drive-service.js
   tab.url = trustedUrl;
   assert.equal((await api.ready(ready, sender)).ok, true);
   assert.equal((await api.status()).connected, true);
+  tab.url = trustedUrl.replace('/macros/s/', '/a/macros/example.test/s/');
+  assert.equal((await api.status()).connected, true, 'Workspace redirect keeps the exact deployment and connection binding');
+  tab.url = tab.url.replace('/s/user-app/', '/s/another-app/');
+  assert.equal((await api.status()).connected, false, 'Workspace redirect must not accept a different deployment');
+  tab.url = trustedUrl;
   await assert.rejects(api.request('upload', {}, 'bob@example.test'), /Tài khoản/);
   assert.equal(sent.length, 0);
   await api.request('upload', { folderId: 'alice_folder', account: 'attacker@example.test' }, 'alice@example.test');

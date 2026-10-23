@@ -1301,7 +1301,7 @@
         state.selectedPath = {};
         state.selectedIds = {};
         if (!findEntitySearchInput()) throw new Error('Hãy mở ô Search trong cây Campaign/Ad set/Ad bên trái trước khi bắt đầu.');
-        respond({ ok: true, version: '6.7.0' });
+        respond({ ok: true, version: '6.8.0' });
       } else if (message.type === 'MAC_DETECT_LEVEL') {
         respond({ ok: true, level: detectCurrentLevel() });
       } else if (message.type === 'MAC_SELECT_TARGET_ENTITY') {

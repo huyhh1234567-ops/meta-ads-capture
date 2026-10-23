@@ -7,7 +7,10 @@ globalThis.MAC_GOOGLE_DRIVE = (() => {
   const trustedTab = (tab, bridge) => {
     try {
       const url = new URL(tab.url), expected = new URL(endpoint());
-      return url.origin === expected.origin && url.pathname === expected.pathname
+      const deployment = url.pathname.match(/^\/macros\/s\/([^/]+)\/exec$/)
+        || url.pathname.match(/^\/a\/macros\/[^/]+\/s\/([^/]+)\/exec$/);
+      const expectedDeployment = expected.pathname.match(/^\/macros\/s\/([^/]+)\/exec$/);
+      return url.origin === expected.origin && !!deployment && !!expectedDeployment && deployment[1] === expectedDeployment[1]
         && url.searchParams.get('connect') === '1' && url.searchParams.get('nonce') === bridge.nonce
         && url.searchParams.get('client') === chrome.runtime.id;
     } catch { return false; }

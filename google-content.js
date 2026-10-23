@@ -94,7 +94,7 @@
     (async () => {
       if (message.type === 'MAC_CAPTURE_INIT') {
         state.settings = message.settings || {}; state.stopped = false; state.running = true;
-        return { ok: true, version: '6.7.0' };
+        return { ok: true, version: '6.8.0' };
       }
       if (message.type === 'MAC_DETECT_LEVEL') return { ok: true, level: state.settings.googleLevel || 'campaign' };
       if (message.type === 'MAC_ENTITY_PREPARE') return { ok: true, snapshot: await prepare(message.level, message.name || '') };
