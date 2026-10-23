@@ -6,7 +6,7 @@ const http = require('node:http');
 const path = require('node:path');
 const { chromium } = require(process.env.MAC_PLAYWRIGHT_PATH || 'playwright');
 const root = path.resolve(__dirname, '..');
-const files = new Set(['popup.html', 'popup.css', 'popup.js', 'xlsx-parser.js']);
+const files = new Set(['popup.html', 'popup.css', 'popup.js', 'xlsx-parser.js', 'package-config.js']);
 const server = http.createServer((request, response) => {
   const file = request.url.slice(1).split('?')[0];
   if (!files.has(file)) { response.writeHead(404).end(); return; }
@@ -27,6 +27,7 @@ const server = http.createServer((request, response) => {
       let status = { state: 'error', message: 'Fixture failure; partial results retained', progress: 50, resumeAvailable: true, result };
       const local = {};
       window.__starts = [];
+      window.__googleConnects = 0;
       window.chrome = {
         storage: {
           sync: { get: async () => ({ settings }), set: async () => {} },
@@ -34,6 +35,9 @@ const server = http.createServer((request, response) => {
         },
         tabs: { query: async () => [{ id: 7, windowId: 1, url: 'https://adsmanager.facebook.com/adsmanager/manage/ads' }] },
         runtime: { sendMessage: async (message) => {
+          if (message.type === 'MAC_GOOGLE_STATUS') return { ok: true, connected: false };
+          if (message.type === 'MAC_GOOGLE_CONNECT') { window.__googleConnects++; return { ok: true, pending: true }; }
+          if (message.type === 'MAC_GOOGLE_CHECK') return { ok: true, account: 'alice@example.test' };
           if (message.type === 'MAC_GET_STATUSES') return { session1: status };
           if (message.type === 'MAC_START_SINGLE') {
             window.__starts.push(message.settings);
@@ -70,6 +74,21 @@ const server = http.createServer((request, response) => {
     await page.waitForFunction(() => window.__starts.length === 2);
     assert.equal(await page.evaluate(() => window.__starts[1].resumeCapture), false);
     assert.equal(await page.evaluate(() => window.__starts[1].highResolution), false);
+    await page.locator('input[name=destination][value=drive]').check();
+    assert.equal(await page.locator('#driveAuthMode').inputValue(), 'google');
+    assert.equal(await page.locator('#webhookOptions').isVisible(), false);
+    await page.locator('#connect').click();
+    assert.equal(await page.evaluate(() => window.__googleConnects), 1);
+    await page.locator('#folderId').fill('https://drive.google.com/drive/folders/alice_folder_123');
+    await page.locator('#driveAuthMode').selectOption('webhook');
+    await page.locator('#webhookToken').fill('never-send-this-private-token');
+    await page.locator('#webhookUrl').fill('https://script.google.com/macros/s/private-owner-deployment/exec');
+    await page.locator('#driveAuthMode').selectOption('google');
+    await page.locator('#capture').click();
+    await page.waitForFunction(() => window.__starts.length === 3);
+    const googleSettings = await page.evaluate(() => window.__starts[2]);
+    assert.equal(googleSettings.driveAuthMode, 'google'); assert.equal(googleSettings.folderId, 'alice_folder_123');
+    assert.equal(googleSettings.webhookToken, ''); assert.equal(googleSettings.webhookUrl, '');
     for (const width of [360, 420]) {
       await page.setViewportSize({ width, height: 1000 });
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `No horizontal overflow at ${width}px`);

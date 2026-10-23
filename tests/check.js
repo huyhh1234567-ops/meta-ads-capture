@@ -714,7 +714,10 @@ async function check() {
   const manifest = JSON.parse(source('manifest.json'));
   assert.ok(manifest.host_permissions.includes('https://ads.google.com/*'));
   assert.ok(manifest.content_scripts.some((item) => item.js.includes('google-content.js')));
-  assert.ok(manifest.content_scripts.every((item) => item.js[0] === 'capture-scroll.js'));
+  assert.ok(manifest.content_scripts.filter((item) => item.js.includes('content.js') || item.js.includes('google-content.js')).every((item) => item.js[0] === 'capture-scroll.js'));
+  const driveBridge = manifest.content_scripts.find((item) => item.js.includes('google-drive-bridge.js'));
+  assert.equal(driveBridge.all_frames, true);
+  assert.ok(driveBridge.matches.includes('https://*.googleusercontent.com/*'));
   console.log('Passed: preview toolbar (one/two rows, icon-only, disabled/ambiguous controls), Share/link/Copy/Stop/cleanup, canonical preview URLs, full-tree search, sidebar replacement/blocked scroll, initialization recovery, crop/stitch integrity, settings protection, Advantage+, Google URLs.');
 }
 check().catch((error) => { console.error(error); process.exitCode = 1; });

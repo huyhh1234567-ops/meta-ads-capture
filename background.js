@@ -1,6 +1,8 @@
+importScripts('package-config.js', 'google-drive-service.js');
 const DEFAULTS = {
   outputFormat: 'post',
   uploadDrive: false,
+  driveAuthMode: 'google',
   makePublic: false,
   folderId: '',
   webhookUrl: '',
@@ -261,6 +263,11 @@ function appsScriptNonJsonMessage(response, text) {
 
 async function uploadThroughWebhook(dataUrl, filename, settings) {
   const task = async () => {
+    if (settings.driveAuthMode === 'google') {
+      const result = await MAC_GOOGLE_DRIVE.request('upload', { dataUrl, filename, folderId: settings.folderId || '', makePublic: settings.makePublic === true }, settings.googleDriveAccount);
+      if (normalizedWebhookUrl(result.viewerLink) !== MAC_DRIVE_PACKAGE.googleExecUrl) throw new Error('Google chưa trả link ảnh hợp lệ từ deployment của gói.');
+      return result.viewerLink;
+    }
     const webhookUrl = normalizedWebhookUrl(settings.webhookUrl);
     if (!webhookUrl || !settings.webhookToken) throw new Error('Thiếu URL /exec hợp lệ hoặc mã bảo vệ Apps Script webhook.');
     const body = new URLSearchParams({
@@ -561,6 +568,7 @@ async function captureFingerprint(settings, page) {
   // Transient tab IDs and timing do not invalidate resume. Secrets only enter
   // the SHA-256 input, never the stored checkpoint or a diagnostic message.
   const keys = ['captureMode', 'platform', 'captureTree', 'targetCampaigns', 'targetAdsets', 'targetAds', 'captureLevels', 'captureAdImage', 'captureAdPreview', 'uploadDrive', 'folderId', 'webhookUrl', 'webhookToken', 'makePublic', 'filenamePrefix', 'highlightAdvantage', 'highlightTA', 'highlightBudget', 'googlePages', 'googleLevel'];
+  if (settings.uploadDrive && settings.driveAuthMode === 'google') keys.push('driveAuthMode', 'googleDriveAccount');
   const stable = (value) => Array.isArray(value) ? value.map(stable) : value && typeof value === 'object'
     ? Object.fromEntries(Object.keys(value).sort().map((key) => [key, stable(value[key])])) : value;
   const input = JSON.stringify(stable({ scope, settings: Object.fromEntries(keys.map((key) => [key, settings[key] ?? null])) }));
@@ -599,6 +607,7 @@ async function runCapture(tab, suppliedSettings, sessionId = suppliedSettings?.s
   // A monitor failure must never turn a capture into an error or change its tab.
   await openProgressWindow().catch(() => {});
   const settings = { ...DEFAULTS, ...suppliedSettings };
+  if (!suppliedSettings?.driveAuthMode && suppliedSettings?.webhookUrl) settings.driveAuthMode = 'webhook';
   const regular = settings.captureMode === 'regular';
   const google = isGoogleAdsUrl(tab.url);
   settings.platform = google ? 'google' : 'meta';
@@ -625,6 +634,17 @@ async function runCapture(tab, suppliedSettings, sessionId = suppliedSettings?.s
   let debuggerAttached = false;
   let metricsOverridden = false;
   try {
+    let savedResume = null;
+    if (suppliedSettings?.resumeCapture === true) {
+      savedResume = await chrome.storage.local.get(['captureCheckpoint', 'captureStatus']);
+      resumeCandidate = savedResume.captureCheckpoint;
+      retainedResult = savedResume.captureStatus?.result || null;
+    }
+    if (settings.uploadDrive && settings.driveAuthMode === 'google') {
+      const connection = await MAC_GOOGLE_DRIVE.request('status', { folderId: settings.folderId || '' }, settings.googleDriveAccount);
+      settings.googleDriveAccount = connection.account;
+      settings.webhookUrl = ''; settings.webhookToken = '';
+    }
     jobs = regular ? [{ level: 'page', label: 'Trang', name: null }] : google ? googleCaptureJobs(settings.googlePages, settings.googleLevel) : treeJobs.length ? treeJobs : [
       ...list(settings.targetCampaigns).map((name) => ({ level: 'campaign', label: 'Campaign', name, depth: 0 })),
       ...list(settings.targetAdsets).map((name) => ({ level: 'adset', label: 'Ad set', name, depth: 0 })),
@@ -632,7 +652,7 @@ async function runCapture(tab, suppliedSettings, sessionId = suppliedSettings?.s
     ];
     const fingerprint = await captureFingerprint(settings, tab.url);
     if (suppliedSettings?.resumeCapture === true) {
-      const saved = await chrome.storage.local.get(['captureCheckpoint', 'captureStatus']);
+      const saved = savedResume;
       const stored = saved.captureCheckpoint;
       resumeCandidate = stored;
       retainedResult = saved.captureStatus?.result || null;
@@ -788,6 +808,20 @@ async function runCapture(tab, suppliedSettings, sessionId = suppliedSettings?.s
 }
 
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
+  if (message.type === 'MAC_GOOGLE_READY') {
+    MAC_GOOGLE_DRIVE.ready(message, sender).then(respond).catch(() => respond({ ok: false })); return true;
+  }
+  if (['MAC_GOOGLE_CONNECT', 'MAC_GOOGLE_STATUS', 'MAC_GOOGLE_CHECK'].includes(message.type)) {
+    if (sender.id !== chrome.runtime.id || sender.tab) return false;
+    (async () => {
+      if (message.type === 'MAC_GOOGLE_STATUS') return MAC_GOOGLE_DRIVE.status();
+      if (message.type === 'MAC_GOOGLE_CONNECT') {
+        if (activeSessions.size) throw new Error('Hãy hoàn tất hoặc dừng phiên chụp trước khi đổi tài khoản Google.');
+        return MAC_GOOGLE_DRIVE.connect();
+      }
+      return MAC_GOOGLE_DRIVE.request('status', { folderId: message.folderId || '' });
+    })().then(respond).catch((error) => respond({ ok: false, error: error.message })); return true;
+  }
   if (message.type === 'MAC_CONTENT_WAIT') {
     const duration = Math.max(0, Math.min(60000, Number(message.ms) || 0));
     (async () => {

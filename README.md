@@ -1,5 +1,11 @@
 # Meta Ads Capture & Link Mapper 6.7.0
 
+## Đang chuẩn bị gói Google Drive cá nhân
+
+Mã nguồn bổ sung **Đăng nhập Google** để người nhận chỉ cần tài khoản Google và link thư mục của mình. Cần tạo deployment mới chạy bằng **User accessing the web app** rồi điền URL công khai vào `package-config.js`; file này không chứa OAuth token hoặc mã bảo vệ riêng. Deployment cũ chạy bằng Me được giữ để link ảnh cũ hoạt động.
+
+Chưa phát hành gói đăng nhập Google: đang chờ xác minh đăng nhập của chủ project để cấu hình và kiểm tra deployment thật. Hướng dẫn cho người đóng gói ở `apps-script/README.md`, hướng dẫn người nhận ở `PACKAGE-README.md`, lệnh đóng gói ở `scripts/package-google-drive.ps1`.
+
 ## Bản 6.7.0 — giảm chờ, ảnh 2× và khoanh Advantage+ của Ad, 23/10/2026
 
 - Search bỏ chờ cố định 500 ms sau Enter và các lượt chờ lại trên viewport đã ổn định. Poll 100 ms, vẫn cần ba mẫu ổn định và đúng tên; hàng cũ cùng cấp chưa phải kết quả của tên mới. Chrome mô phỏng đo từ lúc hàng tải xong đến click: khoảng 0,6–1,4 giây trước sửa, 0,2–0,3 giây sau sửa. Đây không phải thời gian tải Meta thực tế.

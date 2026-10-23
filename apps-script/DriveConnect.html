@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><base target="_top">
+<meta name="mac-drive-bridge" content="<?= nonce ?>"><meta name="mac-drive-client" content="<?= client ?>">
+<style>body{font:16px Arial;max-width:700px;margin:60px auto;padding:24px;color:#17324d}h1{font-size:26px}#status{padding:18px;background:#eef7ff;border-radius:12px}small{display:block;margin-top:18px;line-height:1.6}</style></head>
+<body><h1>Kết nối Drive của bạn</h1><p id="status">Đang xác nhận tài khoản Google…</p><small>Giữ tab này mở trong khi chụp. Quay lại tab quảng cáo để bắt đầu.<br>Ảnh được lưu bằng quyền tài khoản Google này. File riêng tư chỉ xem được bằng tài khoản có quyền truy cập.</small>
+<script>
+(() => {
+  const nonce = document.querySelector('meta[name="mac-drive-bridge"]').content;
+  const client = document.querySelector('meta[name="mac-drive-client"]').content;
+  const status = document.getElementById('status');
+  let account = '';
+  const post = (data) => window.postMessage({ ...data, nonce, client }, location.origin);
+  const ready = () => { if (account) post({ type: 'MAC_GOOGLE_READY', account }); };
+  window.addEventListener('message', (event) => {
+    const data = event.data;
+    if (event.source !== window || !data || data.nonce !== nonce || data.client !== client) return;
+    if (data.type === 'MAC_GOOGLE_HELLO') { ready(); return; }
+    if (data.type !== 'MAC_GOOGLE_REQUEST' || !['status', 'upload'].includes(data.action) || typeof data.id !== 'string') return;
+    google.script.run.withSuccessHandler((result) => post({ type: 'MAC_GOOGLE_RESPONSE', id: data.id, result }))
+      .withFailureHandler(() => post({ type: 'MAC_GOOGLE_RESPONSE', id: data.id, result: { ok: false, error: 'Google chưa xử lý được yêu cầu. Hãy kiểm tra quyền thư mục và kết nối lại.' } }))
+      .browserDriveRequest(data.action, data.payload || {});
+  });
+  google.script.run.withSuccessHandler((result) => {
+    if (!result || !result.ok) { status.textContent = result?.error || 'Không xác nhận được tài khoản.'; return; }
+    account = result.account;
+    status.textContent = 'Đã kết nối: ' + account + '. Bạn có thể quay lại tab quảng cáo.';
+    ready();
+  }).withFailureHandler(() => { status.textContent = 'Chưa kết nối được Drive. Hãy đăng nhập lại Google.'; }).browserDriveRequest('status', {});
+})();
+</script></body></html>

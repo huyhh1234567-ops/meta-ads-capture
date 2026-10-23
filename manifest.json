@@ -52,6 +52,12 @@
   },
   "content_scripts": [
     {
+      "matches": ["https://script.google.com/*", "https://*.googleusercontent.com/*"],
+      "js": ["google-drive-bridge.js"],
+      "all_frames": true,
+      "run_at": "document_idle"
+    },
+    {
       "matches": ["https://ads.google.com/*"],
       "js": ["capture-scroll.js", "google-content.js"],
       "run_at": "document_idle"

@@ -100,6 +100,19 @@ function assertPartialResult(run, expectedNames) {
 }
 
 const tests = [
+  ['Google login failure on resume retains prior Copy results and checkpoint', async () => {
+    const googleSettings = { ...settings, driveAuthMode: 'google', googleDriveAccount: 'alice@example.test' };
+    const first = harness({ selectFailure: (name) => name === 'Second' });
+    first.context.MAC_GOOGLE_DRIVE = { request: async () => ({ ok: true, account: 'alice@example.test' }) };
+    await first.run(1, googleSettings);
+    assert.deepEqual(first.final().result.processed.map((item) => item.name), ['First']);
+    const resumed = harness({}, first.storage);
+    resumed.context.MAC_GOOGLE_DRIVE = { request: async () => { throw new Error('Google session expired'); } };
+    await resumed.run(2, { ...googleSettings, resumeCapture: true });
+    assert.deepEqual(resumed.final().result.processed.map((item) => item.name), ['First']);
+    assert.equal(resumed.final().resumeAvailable, true);
+    assert.equal(resumed.captures.length, 0);
+  }],
   ['an unavailable progress window never interrupts capture or changes its tab', async () => {
     const run = harness({ monitorFailure: true });
     await run.run(42);

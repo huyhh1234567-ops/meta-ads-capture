@@ -1,5 +1,19 @@
 # Thiết lập Drive webhook trong khoảng 3 phút
 
+## Gói đăng nhập Google — người nhận dùng Drive riêng
+
+Phần này dành cho người đóng gói. Người nhận chỉ cài ZIP, đăng nhập Google và dán link thư mục; xem `PACKAGE-README.md`.
+
+1. Trong project Apps Script của bạn, cập nhật `Code.gs`, thêm file HTML tên **DriveConnect** từ `DriveConnect.html`, và thêm scope `https://www.googleapis.com/auth/userinfo.email` trong `appsscript.json` (giữ scope Drive hiện có). Giữ nguyên UPLOAD_TOKEN thật trên server, không đưa vào ZIP/Git.
+2. Tạo **deployment mới**, chọn Web app, **Execute as: User accessing the web app**, cho các tài khoản Google cần dùng được truy cập. Không đổi deployment cũ chạy bằng Me; link ảnh cũ tiếp tục dùng bản đó.
+3. Hoàn tất cấp quyền Google nếu được yêu cầu. Nếu Workspace hoặc màn xác minh ứng dụng chặn người dùng ngoài tổ chức, chủ ứng dụng/quản trị viên cần xử lý; gói không thể bỏ qua chính sách Google.
+4. Lấy URL `/exec` của deployment mới. Điền vào `package-config.js` để chạy từ source, hoặc chạy `./scripts/package-google-drive.ps1 -GoogleExecUrl 'https://script.google.com/macros/s/DEPLOYMENT/exec'` để tạo ZIP đã cấu hình. Script từ chối tạo gói nếu thiếu URL.
+5. Kiểm tra đăng nhập và một lượt đọc tài khoản/thư mục hoặc upload thật bằng deployment mới trước khi phát hành. Kiểm thử mô phỏng không xác nhận được cấu hình Execute as trên Google.
+
+Deployment mới hoạt động bằng quyền của tài khoản đăng nhập, không cần người nhận chia sẻ thư mục cho chủ tool. Google giữ thông tin xác thực; extension chỉ giữ tab kết nối, nonce và email trong storage session. File riêng tư cần người mở có quyền Google Drive. Tùy chọn chia sẻ file gốc vẫn do người dùng chủ động chọn.
+
+## Cấu hình webhook riêng (tương thích bản cũ)
+
 1. Mở [script.new](https://script.new) để tạo thẳng một Apps Script project mới.
 2. Xóa nội dung mặc định trong `Code.gs`, sau đó copy toàn bộ file `Code.gs` ở thư mục này vào.
 3. Đổi `DOI-THANH-MA-RIENG-CUA-BAN` thành một mã riêng, ví dụ một chuỗi dài chỉ bạn biết. Giữ nguyên dấu nháy đơn.

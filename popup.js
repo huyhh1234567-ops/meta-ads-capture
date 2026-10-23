@@ -1,7 +1,7 @@
 const ids = [
   'filenamePrefix','folderId','webhookUrl','webhookToken','makePublic','rowSelector','nameSelector',
   'scrollSelector','previewSelector','currentNameSelector','adPattern','settleMs','maxLoadWaitMs','overlapRatio',
-  'maxShots','highResolution','highlightAdvantage','highlightTA','highlightBudget','hideChrome','exportJson','backgroundMode','autoHidePanel','compactLinks','platform','googlePages','googleLevel','captureMode','capturePace'
+  'maxShots','highResolution','highlightAdvantage','highlightTA','highlightBudget','hideChrome','exportJson','backgroundMode','autoHidePanel','compactLinks','platform','googlePages','googleLevel','captureMode','capturePace','driveAuthMode'
 ];
 const $ = (id) => document.getElementById(id);
 let timer = null;
@@ -11,6 +11,7 @@ let draggedNodeId = null;
 const SESSION_IDS = ['session1'];
 let activeSessionId = 'session1';
 let captureSessions = {};
+let googleDriveAccount = '';
 
 function emptySession(index) {
   return {
@@ -342,6 +343,10 @@ function renderDestination() {
   $('localChoice').classList.toggle('selected', !isDrive);
   $('driveChoice').classList.toggle('selected', isDrive);
   $('drivePanel').classList.toggle('hidden', !isDrive);
+  const google = $('driveAuthMode').value === 'google';
+  $('webhookOptions').classList.toggle('hidden', google);
+  $('googleDriveHelp').classList.toggle('hidden', !google);
+  setDriveConnected(google && Boolean(googleDriveAccount));
 }
 
 function displayedResult(result) {
@@ -392,6 +397,7 @@ async function load() {
     migrated.captureAdPreview = storedSession.includeAd !== false && (storedSession.adPreviewOnly === true || saved.capturePreviewLinks !== false);
   }
   captureSessions = { session1: migrated };
+  if (!saved.driveAuthMode && saved.webhookUrl) saved.driveAuthMode = 'webhook';
   for (const id of ids) {
     if (saved[id] === undefined) continue;
     const el = $(id);
@@ -404,6 +410,11 @@ async function load() {
   renderDestination();
   renderPlatform();
   syncSessionToForm();
+  if ($('driveAuthMode').value === 'google') {
+    const connection = await chrome.runtime.sendMessage({ type: 'MAC_GOOGLE_STATUS' });
+    googleDriveAccount = connection?.connected ? connection.account || '' : '';
+    setDriveConnected(Boolean(googleDriveAccount));
+  }
   await poll();
 }
 
@@ -416,6 +427,9 @@ function baseSettings() {
   data.uploadDrive = destination() === 'drive';
   data.folderId = driveFolderId(data.folderId);
   data.webhookUrl = normalizedWebhookUrl(data.webhookUrl);
+  if (data.driveAuthMode === 'google') {
+    data.webhookUrl = ''; data.webhookToken = ''; data.googleDriveAccount = googleDriveAccount;
+  }
   return data;
 }
 
@@ -451,11 +465,27 @@ function sessionSettings(base, id, index) {
 
 function setDriveConnected(connected) {
   $('driveDot').classList.toggle('connected', connected);
+  if ($('driveAuthMode').value === 'google') {
+    $('driveStatus').textContent = connected ? `Đã kết nối: ${googleDriveAccount}` : 'Chưa đăng nhập Google';
+    $('connect').textContent = connected ? 'Kết nối lại' : 'Đăng nhập Google';
+    return;
+  }
   $('driveStatus').textContent = connected ? 'Webhook đã sẵn sàng' : 'Webhook chưa được kiểm tra';
   $('connect').textContent = connected ? 'Kiểm tra lại' : 'Kiểm tra';
 }
 
 async function testWebhook(showFailure = true) {
+  if ($('driveAuthMode').value === 'google') {
+    const result = await chrome.runtime.sendMessage({ type: 'MAC_GOOGLE_CHECK', folderId: driveFolderId($('folderId').value) || '' });
+    if (result?.ok && result.account) {
+      googleDriveAccount = result.account; setDriveConnected(true); return true;
+    }
+    setDriveConnected(false);
+    const error = result?.error || 'Hãy bấm Đăng nhập Google rồi quay lại tab quảng cáo.';
+    $('driveStatus').textContent = error;
+    if (showFailure) showError(error);
+    return false;
+  }
   const url = normalizedWebhookUrl($('webhookUrl').value);
   const token = $('webhookToken').value.trim();
   if (!url) {
@@ -520,7 +550,7 @@ async function capture(resumeCapture = false) {
       showError('Link thư mục Google Drive không hợp lệ.');
       return;
     }
-    if (base.uploadDrive && base.webhookUrl === null) {
+    if (base.uploadDrive && base.driveAuthMode === 'webhook' && base.webhookUrl === null) {
       $('webhookUrl').focus();
       showError('URL Apps Script Web App không hợp lệ. URL phải kết thúc bằng /exec.');
       return;
@@ -554,7 +584,7 @@ async function capture(resumeCapture = false) {
     settings.tabId = activeTab.id;
     settings.resumeCapture = resumeCapture === true;
     if (!Object.values(settings.captureLevels).some(Boolean)) throw new Error('Hãy bật ít nhất một cấp Campaign, Ad set hoặc Ad.');
-    const persisted = { ...base, webhookToken: '', googlePages: '' };
+    const persisted = { ...base, webhookToken: '', googlePages: '', googleDriveAccount: '' };
     await Promise.all([
       chrome.storage.sync.set({ settings: persisted }),
       chrome.storage.local.set({ webhookToken: base.webhookToken, googlePages: base.googlePages, captureSessions, quickCaptureSettings: { ...settings, resumeCapture: false } })
@@ -641,7 +671,19 @@ async function poll() {
 for (const radio of document.querySelectorAll('input[name="destination"]')) {
   radio.addEventListener('change', renderDestination);
 }
-$('connect').addEventListener('click', () => testWebhook());
+$('driveAuthMode').addEventListener('change', renderDestination);
+$('connect').addEventListener('click', async () => {
+  if ($('driveAuthMode').value !== 'google') { await testWebhook(); return; }
+  const result = await chrome.runtime.sendMessage({ type: 'MAC_GOOGLE_CONNECT' });
+  $('driveStatus').textContent = result?.ok ? 'Hoàn tất đăng nhập trong tab Google rồi quay lại tab quảng cáo.' : result?.error || 'Không mở được đăng nhập Google.';
+});
+chrome.storage.onChanged?.addListener((changes, area) => {
+  if (area === 'session' && changes.googleDriveBridge && $('driveAuthMode').value === 'google') {
+    const connection = changes.googleDriveBridge.newValue;
+    googleDriveAccount = connection?.ready ? connection.account || '' : '';
+    setDriveConnected(Boolean(googleDriveAccount));
+  }
+});
 $('platform').addEventListener('change', renderPlatform);
 $('captureMode').addEventListener('change', renderPlatform);
 $('capture').addEventListener('click', () => capture());
