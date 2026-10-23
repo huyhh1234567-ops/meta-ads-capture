@@ -1,10 +1,14 @@
 # Meta Ads Capture & Link Mapper 6.8.0
 
-## Bản 6.8.0 — gói Google Drive cá nhân (chờ kiểm chứng Google)
+## Bản 6.8.0 — gói Google Drive cá nhân, 23/10/2026
 
-Mã nguồn bổ sung **Đăng nhập Google** để người nhận chỉ cần tài khoản Google và link thư mục của mình. Cần tạo deployment mới chạy bằng **User accessing the web app** rồi điền URL công khai vào `package-config.js`; file này không chứa OAuth token hoặc mã bảo vệ riêng. Deployment cũ chạy bằng Me được giữ để link ảnh cũ hoạt động.
+Gói ZIP có sẵn **Đăng nhập Google**: người nhận chọn Google Drive, đăng nhập và dán link thư mục của mình. Không cần tự deploy, nhập mã bảo vệ hoặc chia sẻ thư mục cho chủ tool. Giữ tab kết nối mở khi chụp; xem `PACKAGE-README.md`.
 
-Đã tạo deployment riêng, phiên bản Apps Script 8 ngày 23/10/2026, chạy bằng tài khoản người truy cập và cho phép các tài khoản Google. URL công khai đã điền trong `package-config.js`; deployment cũ vẫn giữ nguyên. Chưa phát hành gói đăng nhập Google: đang chờ người dùng hoàn tất màn xác minh/cấp quyền Google để kiểm tra kết nối thật. Hướng dẫn cho người đóng gói ở `apps-script/README.md`, hướng dẫn người nhận ở `PACKAGE-README.md`, lệnh đóng gói ở `scripts/package-google-drive.ps1`.
+Deployment riêng chạy bằng **User accessing the web app**, cho phép các tài khoản Google. URL công khai đã điền trong `package-config.js`, không chứa OAuth token hoặc khóa upload của chủ tool. Deployment cũ chạy bằng Me vẫn giữ nguyên để link ảnh cũ hoạt động. File riêng tư cần người xem có quyền Drive; từng người phải tự xem và chấp nhận quyền Google, và Google/Workspace có thể yêu cầu xác minh ứng dụng.
+
+Kiểm chứng: deployment thật đã đăng nhập và đọc được tài khoản Google cá nhân khác với tài khoản chủ script. Kiểm thử server, giao thức bridge trong Chrome riêng, đổi tài khoản, checkpoint và giao diện đều đạt; ZIP đã kiểm tra đầy đủ file chạy và không kèm mã server/khóa riêng. Chưa kiểm tra upload thật hoặc toàn bộ lượt chụp Meta bằng bản 6.8.0 trên Chrome của người dùng.
+
+Hướng dẫn cho người đóng gói ở `apps-script/README.md`, lệnh đóng gói ở `scripts/package-google-drive.ps1`.
 
 ## Bản 6.7.0 — giảm chờ, ảnh 2× và khoanh Advantage+ của Ad, 23/10/2026
 
