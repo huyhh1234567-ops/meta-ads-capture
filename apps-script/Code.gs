@@ -9,6 +9,12 @@
  */
 const UPLOAD_TOKEN = 'DOI-THANH-MA-RIENG-CUA-BAN';
 
+// Chạy thủ công trong trình chỉnh sửa bằng tài khoản đã deploy webhook.
+function authorizeDrive() {
+  DriveApp.getRootFolder().getName();
+  console.log('Đã đọc được thư mục gốc Google Drive.');
+}
+
 function doGet(e) {
   const params = (e && e.parameter) || {};
   if (params.connect === '1') {
