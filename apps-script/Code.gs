@@ -17,14 +17,6 @@ function authorizeDrive() {
 
 function doGet(e) {
   const params = (e && e.parameter) || {};
-  if (params.connect === '1') {
-    if (!/^[a-p]{32}$/.test(String(params.client || '')) || !/^[a-f0-9-]{36}$/i.test(String(params.nonce || ''))) {
-      return HtmlService.createHtmlOutput('Yêu cầu kết nối không hợp lệ. Hãy mở từ extension.');
-    }
-    const page = HtmlService.createTemplateFromFile('DriveConnect');
-    page.nonce = params.nonce; page.client = params.client;
-    return page.evaluate().setTitle('Kết nối Drive của bạn');
-  }
   const fileId = String(params.view || '').trim();
   const signature = String(params.sig || '').trim();
   if (fileId) return imageViewer_(fileId, signature);
@@ -54,37 +46,6 @@ function doPost(e) {
       throw new Error('Action không hợp lệ.');
     }
 
-    return json_(saveDriveImage_(params));
-  } catch (error) {
-    return json_({ ok: false, error: error && error.message ? error.message : String(error) });
-  }
-}
-
-function browserDriveRequest(action, payload) {
-  try {
-    const account = String(Session.getActiveUser().getEmail() || '').trim().toLowerCase();
-    const effective = String(DriveApp.getRootFolder().getOwner().getEmail() || '').trim().toLowerCase();
-    if (!account || account !== effective) throw new Error('Hãy đăng nhập Google; deployment phải chạy bằng tài khoản người truy cập.');
-    const params = payload || {};
-    if (params.account && params.account !== account) throw new Error('Tài khoản Google đã thay đổi. Hãy kết nối lại trong tool.');
-    if (action === 'status') {
-      const folderId = extractFolderId_(params.folderId || '');
-      if (folderId) DriveApp.getFolderById(folderId).getName();
-      return { ok: true, account };
-    }
-    if (action !== 'upload') throw new Error('Action không hợp lệ.');
-    const dataUrl = String(params.dataUrl || '');
-    if (!/^data:image\/png;base64,iVBORw0KGgo/.test(dataUrl)) throw new Error('Chỉ nhận ảnh PNG được chụp từ tool.');
-    if (dataUrl.length > 28 * 1024 * 1024) throw new Error('Ảnh quá lớn để upload. Hãy chia nội dung thành các lượt chụp nhỏ hơn.');
-    let filename = safeFilename_(params.filename || 'MetaAdsCapture.png');
-    if (!/\.png$/i.test(filename)) filename += '.png';
-    return { ...saveDriveImage_({ filename, dataUrl, folderId: String(params.folderId || ''), makePublic: params.makePublic === true ? '1' : '0' }), account };
-  } catch (error) {
-    return { ok: false, error: String(error.message || error) };
-  }
-}
-
-function saveDriveImage_(params) {
     const filename = safeFilename_(params.filename || 'MetaAdsCapture.png');
     const blob = dataUrlToBlob_(params.dataUrl, filename);
     const folderId = extractFolderId_(params.folderId || '');
@@ -113,7 +74,7 @@ function saveDriveImage_(params) {
       ? serviceUrl + '?view=' + encodeURIComponent(id) + '&sig=' + encodeURIComponent(viewerSignature_(id))
       : driveLink;
 
-    return {
+    return json_({
       ok: true,
       id: id,
       name: file.getName(),
@@ -123,7 +84,10 @@ function saveDriveImage_(params) {
       driveLink: driveLink,
       public: isPublic,
       warning: warning
-    };
+    });
+  } catch (error) {
+    return json_({ ok: false, error: error && error.message ? error.message : String(error) });
+  }
 }
 
 function imageViewer_(fileId, signature) {

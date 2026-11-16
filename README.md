@@ -1,14 +1,10 @@
-# Meta Ads Capture & Link Mapper 6.8.0
+# Meta Ads Capture & Link Mapper 6.8.1
 
-## Bản 6.8.0 — gói Google Drive cá nhân, 23/10/2026
+## Bản 6.8.1 — quay về luồng Drive của 6.7.0, 16/11/2026
 
-Gói ZIP có sẵn **Đăng nhập Google**: người nhận chọn Google Drive, đăng nhập và dán link thư mục của mình. Không cần tự deploy, nhập mã bảo vệ hoặc chia sẻ thư mục cho chủ tool. Giữ tab kết nối mở khi chụp; xem `PACKAGE-README.md`.
+Bản này khôi phục luồng upload bằng Apps Script webhook của 6.7.0. Trong tool, nhập URL `/exec`, mã upload và thư mục Drive đã dùng ở 6.7.0. Nếu cấu hình cũ vẫn hoạt động, dùng lại deployment và không cần cấp quyền lại. Không cần tab **Kết nối Drive**.
 
-Deployment riêng chạy bằng **User accessing the web app**, cho phép các tài khoản Google. URL công khai đã điền trong `package-config.js`, không chứa OAuth token hoặc khóa upload của chủ tool. Deployment cũ chạy bằng Me vẫn giữ nguyên để link ảnh cũ hoạt động. File riêng tư cần người xem có quyền Drive; từng người phải tự xem và chấp nhận quyền Google, và Google/Workspace có thể yêu cầu xác minh ứng dụng.
-
-Kiểm chứng: deployment thật đã đăng nhập và đọc được tài khoản Google cá nhân khác với tài khoản chủ script. Kiểm thử server, giao thức bridge trong Chrome riêng, đổi tài khoản, checkpoint và giao diện đều đạt; ZIP đã kiểm tra đầy đủ file chạy và không kèm mã server/khóa riêng. Chưa kiểm tra upload thật hoặc toàn bộ lượt chụp Meta bằng bản 6.8.0 trên Chrome của người dùng.
-
-Hướng dẫn cho người đóng gói ở `apps-script/README.md`, lệnh đóng gói ở `scripts/package-google-drive.ps1`.
+Tải và giải nén ZIP, cập nhật thư mục extension, bấm **Reload** trong Chrome rồi tải lại tab quảng cáo. Nếu trước đó dùng chế độ đăng nhập Google của 6.8.0, hãy nhập cấu hình webhook và bắt đầu lượt chụp mới.
 
 ## Bản 6.7.0 — giảm chờ, ảnh 2× và khoanh Advantage+ của Ad, 23/10/2026
 
