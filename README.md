@@ -1,4 +1,10 @@
-# Meta Ads Capture & Link Mapper 6.8.1
+# Meta Ads Capture & Link Mapper 6.8.2
+
+## Bản 6.8.2 — chọn đầu ra Meta và lấy link Preview quảng cáo Lead
+
+- Trong chế độ tự động Meta Ads, nhóm **Chọn phần cần chụp hoặc lấy link** nằm ngay dưới lựa chọn nền tảng. Có thể bật riêng ảnh Campaign, ảnh Ad set, ảnh Ad hoặc link Preview.
+- Khi lấy link Preview và khung đang chọn **Destination**, tool bấm **Ad** một lần, chờ nút **Share** xuất hiện rồi lấy link. Nếu đang ở **Ad**, tool đi thẳng tới Share. Bước chuyển tab chỉ chạy khi lấy link.
+- Cập nhật extension, bấm **Reload** và tải lại tab Meta. Dùng lại URL webhook, mã upload và thư mục Drive hiện có.
 
 ## Bản 6.8.1 — quay về luồng Drive của 6.7.0, 16/11/2026
 

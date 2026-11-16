@@ -15,6 +15,16 @@
     <section class="notice"><span>1</span><p id="platformNotice">Mở Ads Manager ở màn hình <strong>Edit</strong> và giữ cây Campaign / Ad set / Ad ở bên trái.</p></section>
     <label class="format-label">Chế độ chụp<select id="captureMode"><option value="auto">Tự động theo danh sách quảng cáo</option><option value="regular">Chụp thường — cả trang, một link</option></select></label>
     <label id="platformChoice" class="format-label">Nền tảng<select id="platform"><option value="meta">Meta Ads</option><option value="google">Google Ads — chụp từng màn</option></select></label>
+    <section id="captureSelection" class="card compact">
+      <h2>Chọn phần cần chụp hoặc lấy link</h2>
+      <div class="level-actions capture-options">
+        <label class="level-check"><input type="checkbox" id="includeCampaign" checked> Ảnh Campaign</label>
+        <label class="level-check"><input type="checkbox" id="includeAdset" checked> Ảnh Ad set</label>
+        <label class="level-check"><input type="checkbox" id="captureAdImage" checked> Ảnh Ad</label>
+        <label class="level-check preview-only-check"><input type="checkbox" id="captureAdPreview" checked> Link Preview</label>
+      </div>
+      <p class="output-note">Chỉ bật Link Preview nếu bạn không cần chụp ảnh.</p>
+    </section>
     <section id="googlePanel" class="card hidden">
       <h2>Chụp Google Ads</h2>
       <p class="output-note">Mở màn thiết lập cần chụp. Tool cuộn và ghép thành một ảnh dài. Google có nhiều màn riêng: dán link từng màn bên dưới để chụp lần lượt, hoặc để trống để chụp màn hiện tại. Mở sẵn các mục thu gọn bạn cần trong ảnh.</p>
@@ -42,11 +52,11 @@
     <section id="metaPanel" class="card compact">
       <div class="section-title"><span>3</span><div><h2>Danh sách cần chụp</h2><p>Tool chỉ chạy một tab Meta để bảo đảm ổn định.</p></div></div>
       <small id="sessionHint" class="session-hint">Khi bấm bắt đầu, tool sẽ xử lý tab Ads Manager đang mở trước mặt bạn.</small>
-      <label class="format-label level-label"><span>Campaign</span><span class="level-check"><input type="checkbox" id="includeCampaign" checked> Chụp</span></label>
+      <label for="targetCampaigns" class="format-label">Campaign</label>
       <textarea id="targetCampaigns" class="ad-list" placeholder="[FACEBOOK] DOMINOS - REACH..."></textarea>
-      <label class="format-label level-label"><span>Ad Set</span><span class="level-check"><input type="checkbox" id="includeAdset" checked> Chụp</span></label>
+      <label for="targetAdsets" class="format-label">Ad Set</label>
       <textarea id="targetAdsets" class="ad-list" placeholder="Q3-26_Post 5236..."></textarea>
-      <label class="format-label level-label"><span>Ads</span><span class="level-actions"><span class="level-check"><input type="checkbox" id="captureAdImage" checked> Chụp ảnh</span><span class="level-check preview-only-check"><input type="checkbox" id="captureAdPreview" checked> Lấy Preview</span></span></label>
+      <label for="targetAds" class="format-label">Ads</label>
       <textarea id="targetAds" class="ad-list" placeholder="Post 5236_DP_FBR_BRANDING..."></textarea>
       <div class="import-row"><label class="import-button">Nhập file Excel/CSV<input id="importFile" type="file" accept=".xlsx,.csv,.txt,.tsv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,text/plain"></label><small id="importStatus">App tự đọc file export Meta, không cần chỉnh lại.</small></div>
       <div id="structureManager" class="structure-manager hidden">

@@ -82,12 +82,13 @@ function renderPlatform() {
   $('platformChoice').classList.toggle('hidden', regular);
   $('googlePanel').classList.toggle('hidden', regular || !google);
   $('metaPanel').classList.toggle('hidden', regular || google);
+  $('captureSelection').classList.toggle('hidden', regular || google);
   $('capture').querySelector('strong').textContent = regular ? 'Chụp trang hiện tại' : 'Bắt đầu xử lý';
   $('platformNotice').textContent = regular
     ? 'Chụp nội dung trang hiện tại thành một ảnh dài. Với Meta, lấy vùng thiết lập đang cuộn, bỏ menu và chân trang cố định để tránh mảng trắng. Kết quả là một link khi chọn Drive.'
     : google
     ? 'Mở trang Google Ads cần chụp. Mỗi màn thiết lập sẽ có một ảnh và link riêng.'
-    : 'Mở Meta Ads Manager ở màn hình Edit và giữ cây Campaign / Ad set / Ad bên trái.';
+    : 'Mở Meta Ads Manager ở màn hình Edit và giữ cây Campaign / Ad set / Ad bên trái. Chọn phần cần chụp hoặc lấy link bên dưới.';
 }
 
 function driveFolderId(value) {

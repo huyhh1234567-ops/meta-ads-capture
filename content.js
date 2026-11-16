@@ -815,6 +815,40 @@
     return controls[0]?.node || null;
   }
 
+  function destinationPreviewAdTab() {
+    const label = smallestVisibleText(/^(ad preview|bản xem trước quảng cáo)$/i);
+    if (!label) return null;
+    const header = label.getBoundingClientRect();
+    for (let root = label.parentElement; root && root !== document.body; root = root.parentElement) {
+      if (root.getBoundingClientRect().left < header.left - 120) break;
+      const controls = [...root.querySelectorAll('button, [role="button"], [role="tab"]')].filter((node) => {
+        if (!visible(node)) return false;
+        const rect = node.getBoundingClientRect();
+        return rect.left >= header.right - 8 && rect.top < header.bottom && rect.bottom > header.top;
+      });
+      const named = (pattern) => controls.filter((node) =>
+        pattern.test(normalizedExact(node.innerText || node.textContent || node.getAttribute('aria-label'))));
+      const ads = named(/^(ad|quảng cáo)$/);
+      const destinations = named(/^(destination|điểm đến)$/);
+      if (!ads.length || !destinations.length) continue;
+      if (ads.length !== 1 || destinations.length !== 1) return null;
+      const [ad] = ads, [destination] = destinations;
+      if (ad.getBoundingClientRect().right > destination.getBoundingClientRect().left + 2) return null;
+      const selection = (node) => ['aria-selected', 'aria-pressed'].map((key) => node.getAttribute(key))
+        .find((value) => value === 'true' || value === 'false');
+      const adState = selection(ad), destinationState = selection(destination);
+      if (adState === 'true' || destinationState === 'false') return null;
+      if (destinationState === 'true' || adState === 'false') return ad;
+      // Lead previews can show selection only via the blue button background.
+      const blueBackground = (node) => {
+        const [r, g, b, alpha = 1] = (getComputedStyle(node).backgroundColor.match(/[\d.]+/g) || []).map(Number);
+        return alpha > 0 && b >= g && g > r && b - r >= 12;
+      };
+      return blueBackground(destination) && !blueBackground(ad) ? ad : null;
+    }
+    return null;
+  }
+
   async function ensureAdPreviewEnabled() {
     const label = smallestVisibleText(/^(ad preview|bản xem trước quảng cáo)$/i);
     const labelRect = label?.getBoundingClientRect();
@@ -902,15 +936,27 @@
     await ensureAdPreviewEnabled();
     document.documentElement.removeAttribute('data-mac-preview-link');
     try {
-      let shareLink = smallestVisibleText(/^(share a link|chia sẻ (?:một )?liên kết)$/i);
+      if (state.stopRequested) throw new Error('__MAC_STOPPED__');
+      let adTab = destinationPreviewAdTab();
+      let shareLink = adTab ? null : smallestVisibleText(/^(share a link|chia sẻ (?:một )?liên kết)$/i);
       if (!shareLink) {
-        let trigger = findSharePreviewTrigger();
+        let trigger = null, switched = false;
         const triggerDeadline = Date.now() + Math.min(10000, Math.max(4500, Number(maxWaitMs || 12000)));
-        while (!trigger && Date.now() < triggerDeadline) {
+        do {
           if (state.stopRequested) throw new Error('__MAC_STOPPED__');
+          if (adTab) {
+            if (!switched && !adTab.disabled && adTab.getAttribute('aria-disabled') !== 'true') {
+              readOnlyClick(adTab);
+              switched = true;
+            }
+          } else {
+            trigger = findSharePreviewTrigger();
+            if (trigger) break;
+          }
           await sleep(250);
-          trigger = findSharePreviewTrigger();
-        }
+          adTab = destinationPreviewAdTab();
+        } while (Date.now() < triggerDeadline);
+        if (!trigger && adTab) throw new Error('Preview vẫn ở Destination. Hãy mở tab Ad trong khung Ad preview rồi thử lại.');
         if (!trigger) throw new Error('Không tìm thấy nút Share previews trong khung Ad preview.');
         if (state.stopRequested) throw new Error('__MAC_STOPPED__');
         activate(trigger);
@@ -1301,7 +1347,7 @@
         state.selectedPath = {};
         state.selectedIds = {};
         if (!findEntitySearchInput()) throw new Error('Hãy mở ô Search trong cây Campaign/Ad set/Ad bên trái trước khi bắt đầu.');
-        respond({ ok: true, version: '6.8.1' });
+        respond({ ok: true, version: '6.8.2' });
       } else if (message.type === 'MAC_DETECT_LEVEL') {
         respond({ ok: true, level: detectCurrentLevel() });
       } else if (message.type === 'MAC_SELECT_TARGET_ENTITY') {

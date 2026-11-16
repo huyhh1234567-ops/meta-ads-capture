@@ -14,10 +14,10 @@ async function check() {
     window: {}, innerWidth: 1200, innerHeight: 800,
     document: { addEventListener: (type, fn) => { listeners[type] = fn; }, querySelectorAll: () => headings },
     chrome: { runtime: { sendMessage: async () => ({ ok: true }), onMessage: { addListener(fn) { metaMessage = fn; } } } },
-    getComputedStyle: (node) => ({ display: 'block', visibility: 'visible', overflowY: node.overflowY || 'visible' })
+    getComputedStyle: (node) => ({ display: 'block', visibility: 'visible', overflowY: node.overflowY || 'visible', backgroundColor: node.backgroundColor || 'rgba(0, 0, 0, 0)' })
   };
   const content = source('content.js').replace('  chrome.runtime.onMessage.addListener',
-    '  window.test = { state, normalizedEntityId, readOnlyClick, protectSettings, advantageHighlight, normalizedExact, exactEntityMatch, entityGrid, resetEntityListToTop, settleEntityListAt, entityNameVariants, entityItems, entityIds, entityParentContext, matchesExpectedParents, waitForStableContent, findSharePreviewTrigger, canonicalPreviewUrl, previewUrlFrom, capturePreviewLink };\n  chrome.runtime.onMessage.addListener');
+    '  window.test = { state, normalizedEntityId, readOnlyClick, protectSettings, advantageHighlight, normalizedExact, exactEntityMatch, entityGrid, resetEntityListToTop, settleEntityListAt, entityNameVariants, entityItems, entityIds, entityParentContext, matchesExpectedParents, waitForStableContent, findSharePreviewTrigger, destinationPreviewAdTab, canonicalPreviewUrl, previewUrlFrom, capturePreviewLink };\n  chrome.runtime.onMessage.addListener');
   vm.runInNewContext(content, context);
   const api = context.window.test;
   const unexpectedResponse = () => { throw new Error('Unrelated command should not get a Meta response'); };
@@ -78,13 +78,31 @@ async function check() {
   label.getBoundingClientRect = () => ({ ...originalLabelRect(), top: 170, bottom: 204 });
   assert.equal(api.findSharePreviewTrigger(), share, 'Legacy one-row preview header still works');
   label.getBoundingClientRect = originalLabelRect;
+  const adTab = button('Ad', 870, 120, 42);
+  const destinationTab = button('Destination', 920, 120, 90);
+  const tabs = [adTab, destinationTab];
+  const toolbarQuery = toolbar.querySelectorAll;
+  toolbar.querySelectorAll = (selector) => selector.includes('[role="tab"]') ? tabs : toolbarQuery(selector);
+  destinationTab.backgroundColor = 'rgb(222, 235, 248)';
+  assert.equal(api.destinationPreviewAdTab(), adTab, 'Lead preview can highlight Destination visually without selection attributes');
+  adTab.getAttribute = (key) => key === 'aria-selected' ? 'true' : '';
+  assert.equal(api.destinationPreviewAdTab(), null, 'Already on Ad: explicit selection wins');
+  adTab.getAttribute = () => '';
+  destinationTab.backgroundColor = '';
+  adTab.backgroundColor = 'rgb(222, 235, 248)';
+  assert.equal(api.destinationPreviewAdTab(), null, 'Already on Ad: highlighted Ad does not need a click');
+  destinationTab.getAttribute = (key) => key === 'aria-pressed' ? 'true' : '';
+  assert.equal(api.destinationPreviewAdTab(), adTab, 'Destination may use aria-pressed');
+  tabs.push(button('Ad', 795, 120, 42));
+  assert.equal(api.destinationPreviewAdTab(), null, 'Do not choose from ambiguous Ad controls');
+  toolbar.querySelectorAll = toolbarQuery;
   context.URL = URL;
   const previewUrl = 'https://fb.me/adspreview/facebook/26T9EyYhOhwjbsD';
   const wrappedPreview = `https://l.facebook.com/l.php?u=${encodeURIComponent(previewUrl)}&h=tracking`;
   assert.equal(api.canonicalPreviewUrl(wrappedPreview), previewUrl);
   assert.equal(api.canonicalPreviewUrl('https://example.com/random-preview'), '', 'Unrelated clipboard/field links are not ad previews');
 
-  let previewClock = 0, stage = 0, cleanedUp = 0, copied = '';
+  let previewClock = 0, stage = 0, cleanedUp = 0, copied = '', destinationUntil = 0, destinationActive = false;
   const shareItem = {}, copyItem = {};
   const calls = [];
   const shareDialog = { innerText: '', querySelectorAll: () => [] };
@@ -95,6 +113,8 @@ async function check() {
     document: { documentElement: { removeAttribute: () => { copied = ''; }, getAttribute: () => copied } },
     smallestVisibleText: (pattern, root) => root === shareDialog ? copyItem : stage === 1 ? shareItem : null,
     findSharePreviewTrigger: api.findSharePreviewTrigger,
+    destinationPreviewAdTab: () => destinationActive && previewClock < destinationUntil ? adTab : null,
+    readOnlyClick: (node) => { assert.equal(node, adTab); calls.push(node); destinationUntil = previewClock + 500; },
     activate: (node) => {
       calls.push(node);
       if (node === share) stage = 1;
@@ -116,6 +136,12 @@ async function check() {
   shareDialog.innerText = wrappedPreview;
   const fieldPreview = await flow.capturePreviewLink(5000, 'ad');
   assert.equal(fieldPreview.link, previewUrl, 'Read a preview URL directly from the current dialog');
+  destinationActive = true;
+  destinationUntil = Infinity;
+  const beforeLead = calls.length;
+  assert.equal((await flow.capturePreviewLink(5000, 'ad')).link, previewUrl);
+  assert.deepEqual(calls.slice(beforeLead), ['reset', adTab, share, shareItem], 'Click Ad once then wait for the Share toolbar, even if a stale Share trigger is visible');
+  destinationActive = false;
   flow.state.stopRequested = true;
   const beforeStop = calls.length;
   await assert.rejects(flow.capturePreviewLink(5000, 'ad'), /__MAC_STOPPED__/);
@@ -160,7 +186,7 @@ async function check() {
   left.scrollTop = 1800;
   const initialized = await new Promise((resolve) => metaMessage({ type: 'MAC_CAPTURE_INIT', settings: {} }, {}, resolve));
   assert.equal(initialized.ok, true);
-  assert.equal(initialized.version, '6.8.1');
+  assert.equal(initialized.version, '6.8.2');
   assert.equal(left.scrollTop, 1800, 'Start must not scan or reset the unfiltered tree');
 
   const normalQuery = context.document.querySelectorAll, normalRows = left.querySelectorAll;
@@ -680,7 +706,7 @@ async function check() {
     setStatus: async (status) => statuses.push(status),
     send: async (_id, message) => {
       sent.push(message.type);
-      if (message.type === 'MAC_CAPTURE_INIT') return { ok: true, version: '6.8.1' };
+      if (message.type === 'MAC_CAPTURE_INIT') return { ok: true, version: '6.8.2' };
       return { ok: true, snapshot: { ...snap, name: 'Current page' } };
     },
     shouldStop: async () => false, keepBackgroundTabActive: async () => {},

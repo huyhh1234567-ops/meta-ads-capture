@@ -45,6 +45,17 @@ const server = http.createServer((request, response) => {
     });
     await page.goto(`http://127.0.0.1:${server.address().port}/popup.html`);
     await page.locator('#resume').waitFor({ state: 'visible' });
+    await page.locator('#captureSelection').waitFor({ state: 'visible' });
+    assert.ok(await page.locator('#captureSelection').evaluate((node) =>
+      Boolean(node.compareDocumentPosition(document.getElementById('localChoice')) & Node.DOCUMENT_POSITION_FOLLOWING)));
+    const mode = page.locator('#captureMode'), platform = page.locator('#platform');
+    await mode.selectOption('regular');
+    assert.equal(await page.locator('#captureSelection').isVisible(), false);
+    await mode.selectOption('auto');
+    await platform.selectOption('google');
+    assert.equal(await page.locator('#captureSelection').isVisible(), false);
+    await platform.selectOption('meta');
+    await page.locator('#captureSelection').waitFor({ state: 'visible' });
     assert.equal(await page.locator('#highlightTA').isChecked(), false);
     assert.equal(await page.locator('#highlightBudget').isChecked(), false);
     assert.equal(await page.locator('#highResolution').isChecked(), true);
@@ -66,10 +77,14 @@ const server = http.createServer((request, response) => {
     await page.locator('#resume').waitFor({ state: 'hidden' });
     await page.locator('.advanced > summary').click();
     await page.locator('#highResolution').uncheck();
+    await page.locator('#captureAdImage').uncheck();
+    await page.locator('#captureAdPreview').check();
     await page.locator('#capture').click();
     await page.waitForFunction(() => window.__starts.length === 2);
     assert.equal(await page.evaluate(() => window.__starts[1].resumeCapture), false);
     assert.equal(await page.evaluate(() => window.__starts[1].highResolution), false);
+    assert.equal(await page.evaluate(() => window.__starts[1].captureAdImage), false);
+    assert.equal(await page.evaluate(() => window.__starts[1].captureAdPreview), true);
     for (const width of [360, 420]) {
       await page.setViewportSize({ width, height: 1000 });
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `No horizontal overflow at ${width}px`);
